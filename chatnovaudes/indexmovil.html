@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOVA - Tu Asistente Contable</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        nova: {
+                            dark: '#00264d',
+                            blue: '#0056b3',
+                            light: '#0099ff',
+                            soft: '#e6f2ff',
+                            accent: '#00c3ff'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .chat-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans h-screen flex flex-col md:flex-row overflow-hidden relative">
+
+    <!-- Overlay para móvil cuando el sidebar esté abierto -->
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-20 md:hidden hidden transition-opacity"></div>
+
+    <!-- Sidebar / Panel lateral de módulos (Responsivo & Drawer en móvil) -->
+    <aside id="appSidebar" class="absolute md:relative inset-y-0 left-0 w-80 bg-nova-dark text-white flex flex-col justify-between shadow-xl z-30 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+        <div>
+            <!-- Header con Branding NOVA -->
+            <div class="p-5 border-b border-slate-700/60 bg-slate-900/40 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-full bg-white p-1 flex items-center justify-center shadow-md">
+                        <svg viewBox="0 0 100 100" class="w-full h-full">
+                            <circle cx="50" cy="50" r="45" fill="#0056b3" />
+                            <circle cx="50" cy="12" r="6" fill="#00c3ff" />
+                            <rect x="47" y="18" width="6" height="8" fill="#0056b3" />
+                            <rect x="25" y="38" width="50" height="26" rx="13" fill="#001833" />
+                            <path d="M 35 50 Q 42 40 48 50" stroke="#00c3ff" stroke-width="4" fill="none" stroke-linecap="round"/>
+                            <path d="M 52 50 Q 58 40 65 50" stroke="#00c3ff" stroke-width="4" fill="none" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-black tracking-wider text-white">N<span class="text-nova-accent">O</span>VA</h1>
+                        <p class="text-xs text-blue-200 uppercase tracking-widest font-semibold">Tu asistente contable</p>
+                    </div>
+                </div>
+                <!-- Botón cerrar menú en móvil -->
+                <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-white p-2">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Categorías de consulta rápida -->
+            <div class="p-4">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-2">Módulos de Especialidad</h2>
+                <nav class="space-y-1 text-sm chat-scroll max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
+                    <button onclick="quickQuery('Facturación Electrónica y POS')" class="w-full text-left px-3 py-2.5 rounded-lg text-slate-200 hover:bg-nova-blue/40 hover:text-white transition flex items-center space-x-2">
+                        <i class="fa-solid fa-file-invoice text-nova-accent w-5"></i>
+                        <span>Facturación y POS</span>
+                    </button>
+                    <button onclick="quickQuery('Nómina Electrónica')" class="w-full text-left px-3 py-2.5 rounded-lg text-slate-200 hover:bg-nova-blue/40 hover:text-white transition flex items-center space-x-2">
+                        <i class="fa-solid fa-users-gear text-nova-accent w-5"></i>
+                        <span>Nómina Electrónica</span>
+                    </button>
+                    <button onclick="quickQuery('Información Exógena')" class="w-full text-left px-3 py-2.5 rounded-lg text-slate-200 hover:bg-nova-blue/40 hover:text-white transition flex items-center space-x-2">
+                        <i class="fa-solid fa-database text-nova-accent w-5"></i>
+                        <span>Información Exógena</span>
+                    </button>
+                    <button onclick="quickQuery('Impuesto sobre la Renta')" class="w-full text-left px-3 py-2.5 rounded-lg text-slate-200 hover:bg-nova-blue/40 hover:text-white transition flex items-center space-x-2">
+                        <i class="fa-solid fa-calculator text-nova-accent w-5"></i>
+                        <span>Impuesto de Renta</span>
+                    </button>
+                    <button onclick="quickQuery('Impuesto sobre las Ventas (IVA)')" class="w-full text-left px-3 py-2.5 rounded-lg text-slate-200 hover:bg-nova-blue/40 hover:text-white transition flex items-center space-x-2">
+                        <i class="fa-solid fa-percent text-nova-accent w-5"></i>
+                        <span>IVA y ReteIVA</span>
+                    </button>
+                    <button onclick="quickQuery('Retención en la Fuente')" class="w-full text-left px-3 py-2.5 rounded-lg text-slate-200 hover:bg-nova-blue/40 hover:text-white transition flex items-center space-x-2">
+                        <i class="fa-solid fa-hand-holding-dollar text-nova-accent w-5"></i>
+                        <span>Retención en la Fuente</span>
+                    </button>
+                    <button onclick="quickQuery('Régimen Simple de Tributación (RST)')" class="w-full text-left px-3 py-2.5 rounded-lg text-slate-200 hover:bg-nova-blue/40 hover:text-white transition flex items-center space-x-2">
+                        <i class="fa-solid fa-boxes-packing text-nova-accent w-5"></i>
+                        <span>Régimen Simple (RST)</span>
+                    </button>
+                    <button onclick="quickQuery('Procedimiento Tributario y Sanciones')" class="w-full text-left px-3 py-2.5 rounded-lg text-slate-200 hover:bg-nova-blue/40 hover:text-white transition flex items-center space-x-2">
+                        <i class="fa-solid fa-gavel text-nova-accent w-5"></i>
+                        <span>Procedimiento y RUT</span>
+                    </button>
+                    <button onclick="quickQuery('Protección de Datos y Habeas Data')" class="w-full text-left px-3 py-2.5 rounded-lg text-slate-200 hover:bg-nova-blue/40 hover:text-white transition flex items-center space-x-2">
+                        <i class="fa-solid fa-user-shield text-nova-accent w-5"></i>
+                        <span>Habeas Data & IA</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Footer Sidebar -->
+        <div class="p-4 border-t border-slate-700/60 text-xs text-slate-400 text-center bg-slate-900/40">
+            <p>© 2026 <strong>NOVA Assistant</strong></p>
+            <p class="text-[10px] text-slate-500 mt-0.5">Normatividad Tributaria & Financiera DIAN</p>
+        </div>
+    </aside>
+
+    <!-- Chat Central area -->
+    <main class="flex-1 flex flex-col bg-white h-full relative w-full">
+        
+        <!-- Header superior -->
+        <header class="bg-white border-b border-slate-200 p-4 flex items-center justify-between shadow-sm z-10">
+            <div class="flex items-center space-x-3">
+                <!-- Botón hamburguesa móvil -->
+                <button onclick="toggleSidebar()" class="md:hidden text-slate-700 hover:text-nova-blue p-2 -ml-2">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <div class="relative">
+                    <div class="w-10 h-10 rounded-full bg-nova-soft border border-nova-light flex items-center justify-center">
+                        <i class="fa-solid fa-robot text-nova-blue text-lg"></i>
+                    </div>
+                    <span class="bottom-0 right-0 absolute w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+                </div>
+                <div>
+                    <h2 class="text-sm md:text-base font-bold text-slate-800">Chatbot Consultor Tributario</h2>
+                    <p class="text-xs text-emerald-600 font-medium flex items-center">
+                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span> En línea | Base de datos cargada
+                    </p>
+                </div>
+            </div>
+            
+            <button onclick="openRestartModal()" class="text-xs text-slate-600 hover:text-nova-blue border border-slate-300 hover:border-nova-light bg-slate-50 hover:bg-nova-soft rounded-lg px-3 py-2 transition flex items-center gap-1.5 font-semibold">
+                <i class="fa-solid fa-rotate-right"></i> <span class="hidden sm:inline">Reiniciar Chat</span>
+            </button>
+        </header>
+
+        <!-- Ventana de mensajes -->
+        <div id="chatMessages" class="flex-1 chat-scroll p-4 md:p-6 overflow-y-auto space-y-4 bg-slate-50/50">
+            <!-- Mensaje inicial de Bienvenida de NOVA -->
+            <div class="flex items-start space-x-3 max-w-3xl">
+                <div class="w-8 h-8 rounded-full bg-nova-blue text-white flex items-center justify-center shrink-0 mt-1 shadow">
+                    <i class="fa-solid fa-robot text-sm"></i>
+                </div>
+                <div class="bg-white border border-slate-200 text-slate-800 p-4 rounded-2xl rounded-tl-none shadow-sm space-y-2">
+                    <p class="font-medium text-nova-blue text-sm">¡Hola! Soy NOVA, tu asistente contable, tributario y financiero.</p>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        Estoy entrenado para responder todas tus preguntas basadas en el Estatuto Tributario, resoluciones vigentes de la DIAN, retención en la fuente, IVA, nómina y facturación electrónica, exógena y Ley de protección de datos (1581).
+                    </p>
+                    <div class="pt-2 flex flex-wrap gap-2">
+                        <span class="text-xs bg-nova-soft text-nova-blue px-2.5 py-1 rounded-full font-medium">Decreto 1625 / DURT</span>
+                        <span class="text-xs bg-nova-soft text-nova-blue px-2.5 py-1 rounded-full font-medium">Facturación XML 2.1</span>
+                        <span class="text-xs bg-nova-soft text-nova-blue px-2.5 py-1 rounded-full font-medium">RST & Cédulas</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Área de escritura -->
+        <footer class="p-4 bg-white border-t border-slate-200">
+            <div class="max-w-4xl mx-auto">
+                <form id="chatForm" onsubmit="handleSend(event)" class="flex items-center space-x-2">
+                    <input 
+                        type="text" 
+                        id="userInput" 
+                        placeholder="Escribe tu consulta tributaria o financiera aquí..." 
+                        class="flex-1 border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-nova-blue focus:ring-2 focus:ring-nova-soft transition"
+                        autocomplete="off"
+                    >
+                    <button 
+                        type="submit" 
+                        class="bg-nova-blue hover:bg-nova-dark text-white font-semibold px-5 py-3 rounded-xl transition flex items-center space-x-2 shadow-md hover:shadow-lg"
+                    >
+                        <span>Enviar</span>
+                        <i class="fa-solid fa-paper-plane text-xs"></i>
+                    </button>
+                </form>
+                <p class="text-[11px] text-slate-400 text-center mt-2">
+                    Respuestas respaldadas por jurisprudencia del Consejo de Estado, Constitución Política y Estatuto Tributario Colombiano.
+                </p>
+            </div>
+        </footer>
+    </main>
+
+    <!-- POPUP / MODAL DE REINICIO DE CONVERSACIÓN -->
+    <div id="restartModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform scale-95 transition-transform duration-300" id="modalContent">
+            <div class="text-center space-y-3">
+                <div class="w-14 h-14 rounded-full bg-nova-soft text-nova-blue flex items-center justify-center mx-auto text-xl shadow-inner">
+                    <i class="fa-solid fa-comments"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800">¿Iniciar una nueva conversación?</h3>
+                <p class="text-sm text-slate-600">
+                    Puedes limpiar el historial actual del chat o seleccionar un nuevo módulo de especialidad tributaria para continuar.
+                </p>
+            </div>
+
+            <div class="mt-6 space-y-2">
+                <button onclick="confirmRestart('general')" class="w-full bg-nova-blue hover:bg-nova-dark text-white text-sm font-semibold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> Limpiar Chat y Empezar de Nuevo
+                </button>
+                <button onclick="confirmRestart('sidebar')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-bars-staggered"></i> Elegir Módulo del Panel Lateral
+                </button>
+            </div>
+
+            <div class="mt-4 text-center">
+                <button onclick="closeRestartModal()" class="text-xs text-slate-400 hover:text-slate-600 font-medium">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Base de conocimiento estructurada proveniente del documento oficial
+        const knowledgeBase = [
+            {
+                keywords: ["decreto", "compila", "unifica", "reglamentacion", "tributaria", "estatuto", "1625", "durt"],
+                question: "¿Qué decreto compila y unifica la reglamentación en materia tributaria?",
+                answer: "El **Decreto 1625 de 2016** (Decreto Único Reglamentario en Materia Tributaria - DURT) unifica, compila y codifica de manera orgánica las normas reglamentarias vigentes en el país. Su función es garantizar la seguridad jurídica y servir de eje de concordancia directa con las disposiciones del Estatuto Tributario.",
+                source: "Dirección de Impuestos y Aduanas Nacionales (DIAN), Decreto 1625 de 2016."
+            },
+            {
+                keywords: ["tratado", "doble imposicion", "cdi", "jerarquia", "prevalencia", "constitucional"],
+                question: "¿Cuál es la jerarquía normativa de un Tratado de Doble Imposición (CDI)?",
+                answer: "Los Convenios para Evitar la Doble Imposición (CDI) ratificados por el Congreso y declarados exequibles por la Corte Constitucional se integran al ordenamiento nacional bajo el principio de *lex specialis*. Poseen **prevalencia y aplicación preferente** sobre las normas del Estatuto Tributario general.",
+                source: "Constitución Política de Colombia, Art. 9 y 226; Sentencias C-460/10 y C-491/19."
+            },
+            {
+                keywords: ["legalidad", "principio de legalidad", "338", "elementos", "congreso"],
+                question: "¿En qué consiste el principio de legalidad en el régimen tributario?",
+                answer: "Conforme al Artículo 338 constitucional, establece que en tiempos de paz, únicamente el Congreso de la República, las asambleas departamentales y los concejos distritales o municipales tienen la facultad de imponer contribuciones fiscales. La ley debe definir directamente sus elementos esenciales: **sujeto activo, sujeto pasivo, hecho generador, base gravable y tarifa**.",
+                source: "Constitución Política de Colombia, Artículo 338."
+            },
+            {
+                keywords: ["irretroactividad", "retroactividad", "periodo", "363"],
+                question: "¿Qué es el principio de irretroactividad tributaria?",
+                answer: "Determina que las leyes, ordenanzas o acuerdos que regulen impuestos cuya base sea el resultado de hechos ocurridos durante un período determinado, **no pueden aplicarse sino a partir del período fiscal que comience con posterioridad** a la vigencia de la norma. No se pueden modificar las reglas de períodos ya consolidados.",
+                source: "Constitución Política de Colombia, Art. 363; Estatuto Tributario, Art. 11."
+            },
+            {
+                keywords: ["analogia", "consejo de estado", "exenciones", "sanciones"],
+                question: "¿Cómo define el Consejo de Estado el concepto de analogía en derecho tributario?",
+                answer: "La analogía jurídica es **inaplicable** para la creación de tributos, establecimiento de exenciones, exclusiones, beneficios tributarios, amnistías o la imposición de sanciones. Estos elementos están sometidos a estricta reserva legal, impidiendo interpretaciones extensivas.",
+                source: "Jurisprudencia de la Sala de lo Contencioso Administrativo del Consejo de Estado."
+            },
+            {
+                keywords: ["concepto", "dian", "obligatoriedad", "vinculante", "131"],
+                question: "¿A partir de qué momento adquiere obligatoriedad un concepto oficial de la DIAN?",
+                answer: "Los conceptos de carácter general emitidos por la DIAN adquieren fuerza vinculante y obligatoriedad para los funcionarios de la administración desde el momento exacto de su **publicación en el Diario Oficial** o en los medios doctrinales autorizados. Los contribuyentes pueden sustentar sus actuaciones con base en ellos mientras estén vigentes.",
+                source: "Estatuto Tributario, Artículo 131."
+            },
+            {
+                keywords: ["antielusion", "clausula", "abuso", "869", "sustancia"],
+                question: "¿Qué es la Cláusula General Antielusión?",
+                answer: "Es la facultad legal que permite a la DIAN recategorizar, reconfigurar o desconocer operaciones, contratos o estructuras comerciales que configuren abuso en materia tributaria. La entidad tiene el poder de aplicar la **realidad de la sustancia económica sobre las formas jurídicas** utilizadas para obtener ventajas fiscales indebidas.",
+                source: "Estatuto Tributario Colombiano, Artículo 869."
+            },
+            {
+                keywords: ["impuesto nacional", "tasa aduanera", "contraprestacion", "diferencia"],
+                question: "¿Cuál es la diferencia entre un impuesto nacional y una tasa aduanera?",
+                answer: "El **impuesto nacional** es una carga impositiva obligatoria y de carácter general sin contraprestación directa e inmediata por parte del Estado. La **tasa aduanera** corresponde a una contraprestación económica destinada estrictamente a recuperar los costos de un servicio específico prestado al usuario de comercio exterior.",
+                source: "Corte Constitucional de Colombia (Tipología de tributos)."
+            },
+            {
+                keywords: ["equidad", "equidad horizontal", "equidad vertical", "progresiva"],
+                question: "¿Qué establece el principio de equidad tributaria?",
+                answer: "Exige dos dimensiones: la **equidad horizontal**, que ordena dar un trato idéntico a contribuyentes en la misma situación económica; y la **equidad vertical**, que exige una carga progresiva diferenciada para quienes poseen mayor capacidad económica.",
+                source: "Constitución Política de Colombia, Artículo 363."
+            },
+            {
+                keywords: ["uvt", "unidad de valor tributario", "868", "reajustar", "ipc"],
+                question: "¿Qué papel juega la Unidad de Valor Tributario (UVT)?",
+                answer: "Es la medida de valor estándar obligatoria empleada para homogeneizar, reajustar y expresar las obligaciones fiscales. Permite la actualización automática anual de sanciones, topes de ingresos, cuantías de retención y bases gravables ajustándose con base en el IPC sin requerir nuevas leyes.",
+                source: "Estatuto Tributario Colombiano, Artículo 868."
+            },
+            // Facturación electrónica y POS
+            {
+                keywords: ["eventos", "factura electronica", "plazo", "acuse", "recibo", "aceptacion", "deducciones", "616-1"],
+                question: "¿Cuáles son los eventos obligatorios para aceptar una factura electrónica a plazos?",
+                answer: "Para soportar costos, deducciones o IVA descontable en compras a crédito, el adquirente debe inscribir obligatoriamente en la plataforma DIAN tres eventos:\n1. El acuse de recibo de la factura electrónica.\n2. El recibo de los bienes o servicios adquiridos.\n3. La aceptación expresa del documento (o aceptación tácita tras vencimiento de términos).",
+                source: "Estatuto Tributario, Artículo 616-1."
+            },
+            {
+                keywords: ["cufe", "codigo unico", "algoritmo", "autenticidad"],
+                question: "¿Qué es el código CUFE y cuál es su función?",
+                answer: "El Código Único de Factura Electrónica (CUFE) es una cadena alfanumérica única generada mediante un algoritmo matemático estructurado a partir de los datos del documento. Garantiza la identificación unívoca, autenticidad e inalterabilidad de cada factura electrónica en Colombia.",
+                source: "Anexo Técnico del Sistema de Facturación Electrónica DIAN."
+            },
+            {
+                keywords: ["xml", "ubl", "lenguaje", "estandar", "2.1"],
+                question: "¿Bajo qué estándar informático debe codificarse la factura electrónica?",
+                answer: "El documento debe ser generado y transmitido obligatoriamente bajo el lenguaje **XML**, empleando el estándar internacional **UBL 2.1 (Universal Business Language)** de conformidad con los lineamientos técnicos de la DIAN.",
+                source: "Anexo Técnico de Facturación Electrónica DIAN."
+            },
+            {
+                keywords: ["nota credito", "anular", "corregir", "factura"],
+                question: "¿Qué documento electrónico se emite para anular o corregir una factura electrónica?",
+                answer: "Se debe expedir una **Nota Crédito Electrónica**. Este documento debe referenciar explícitamente el CUFE de la factura original que se modifica o anula y transmitirse para su validación formal ante la DIAN.",
+                source: "Estatuto Tributario, Art. 616-1."
+            },
+            {
+                keywords: ["pos", "tiquete pos", "limite", "descontable", "costos"],
+                question: "¿El tiquete POS sirve como soporte de costos y deducciones?",
+                answer: "El tiquete POS **no otorga validez legal** para soportar costos, deducciones en Renta ni IVA descontable, independientemente del monto. Si el comprador requiere soporte fiscal, el vendedor está estrictamente obligado a emitir una **Factura Electrónica de Venta**.",
+                source: "Estatuto Tributario, Art. 616-1; Ley 2277 de 2022."
+            },
+            {
+                keywords: ["radian", "factoring", "titulo valor", "endoso"],
+                question: "¿Qué es el sistema RADIAN?",
+                answer: "Es la plataforma tecnológica administrada por la DIAN encargada de registrar la hoja de vida, circulación, endoso, limitación y trazabilidad comercial de las facturas electrónicas de venta que operan como **títulos valores**, habilitando operaciones seguras de *factoring*.",
+                source: "Resoluciones DIAN sobre Registro de Títulos Valores."
+            },
+            {
+                keywords: ["contingencia", "facturador", "tipo 03", "48 horas", "talonario"],
+                question: "¿Qué hacer en caso de fallas técnicas en el software del facturador?",
+                answer: "Debe activarse la **Contingencia Tipo 03 (Fallas del Facturador)**. Se emiten las facturas en papel/talonario con numeración autorizada y, una vez superado el inconveniente, se dispone de **48 horas** para transcribir y transmitir los archivos XML a la DIAN.",
+                source: "Resolución 000165 de 2023 de la DIAN."
+            },
+            {
+                keywords: ["consumidor final", "222222222222", "nit generico"],
+                question: "¿Cómo registrar a un adquirente cuando no requiere identificación?",
+                answer: "Se debe registrar textualmente la frase **'Consumidor Final'** y diligenciar de forma exclusiva el NIT genérico **222222222222** (doce números dos), omitiendo el dígito de verificación.",
+                source: "Anexos Técnicos del Sistema de Facturación DIAN."
+            },
+            // Nómina Electrónica
+            {
+                keywords: ["nomina", "nomina electronica", "plazo", "10 dias", "mensual"],
+                question: "¿Cuál es el plazo mensual para transmitir la Nómina Electrónica?",
+                answer: "La transmisión debe realizarse dentro de los **primeros diez (10) días hábiles del mes siguiente** al cual corresponden los pagos o abonos en cuenta laborales.",
+                source: "Resoluciones del Sistema de Documentos Soporte DIAN."
+            },
+            {
+                keywords: ["cune", "codigo nomina", "seguridad", "algoritmo"],
+                question: "¿Qué es el CUNE en la nómina electrónica?",
+                answer: "El **CUNE** (Código Único de Nómina Electrónica) es una cadena alfanumérica única calculada algorítmicamente que concatena los datos de la liquidación laboral y del empleador para garantizar la integridad e inalterabilidad del reporte.",
+                source: "Anexo Técnico de Nómina Electrónica DIAN."
+            },
+            {
+                keywords: ["contratistas", "prestacion de servicios", "honorarios", "independientes", "soporte no obligados"],
+                question: "¿Los contratistas independientes se incluyen en la nómina electrónica?",
+                answer: "**No.** Los pagos a contratistas independientes por prestación de servicios u honorarios comerciales no se reportan en nómina electrónica. Su soporte fiscal es el *'Documento Soporte en Adquisiciones Efectuadas a No Obligados a Facturar'*, emitido electrónicamente por el comprador.",
+                source: "Estatuto Tributario, Artículo 616-1."
+            },
+            // Exógena
+            {
+                keywords: ["exogena", "medios magneticos", "631", "651", "sancion exogena"],
+                question: "¿Cuál es el fundamento legal de la información exógena y sus sanciones?",
+                answer: "La facultad de exigir información exógena reside en el **Artículo 631 del Estatuto Tributario**. El incumplimiento, extemporaneidad o errores en el reporte se sancionan conforme al **Artículo 651 del E.T.** con multas calculadas sobre los montos no informados o erróneos.",
+                source: "Estatuto Tributario, Artículos 631 y 651."
+            },
+            {
+                keywords: ["formatos exogena", "1001", "1007", "1008", "1009", "1010", "1003", "1005"],
+                question: "¿Cuáles son los formatos principales de información exógena?",
+                answer: "Los principales formatos incluyen:\n- **1001**: Pagos o abonos en cuenta y retenciones practicadas.\n- **1003**: Retenciones que le practicaron a la empresa.\n- **1005**: IVA descontable.\n- **1007**: Ingresos propios recibidos.\n- **1008**: Cuentas por cobrar (cartera).\n- **1009**: Cuentas por pagar (pasivos).\n- **1010**: Composición del patrimonio (socios/accionistas).",
+                source: "Resoluciones Anuales de Especificaciones Técnicas de la DIAN."
+            },
+            // Impuesto sobre la renta
+            {
+                keywords: ["tarifa renta", "persona juridica", "35%", "sociedades"],
+                question: "¿Cuál es la tarifa general de renta para personas jurídicas?",
+                answer: "La tarifa general ordinaria del Impuesto sobre la Renta aplicable a las sociedades comerciales nacionales y establecimientos permanentes está fijada en el **35%**.",
+                source: "Estatuto Tributario Colombiano, Artículo 240."
+            },
+            {
+                keywords: ["cedula general", "personas naturales", "40%", "1340 uvt", "cedular"],
+                question: "¿Cómo se depura la renta de personas naturales y cuál es su límite de deducciones?",
+                answer: "Se aplica el **sistema de determinación cedular** (Cédula General, Pensiones, Dividendos). En la Cédula General, las rentas exentas y deducciones no pueden exceder en conjunto el **40% de los ingresos netos**, con un tope máximo absoluto de **1.340 UVT anuales**.",
+                source: "Estatuto Tributario, Art. 330 y 336 (Ley 2277 de 2022)."
+            },
+            {
+                keywords: ["ganancias ocasionales", "15%", "activos fijos", "2 años"],
+                question: "¿Cuál es la tarifa de ganancias ocasionales por venta de activos fijos?",
+                answer: "La tarifa impositiva general para ganancias ocasionales (venta de activos fijos poseídos por **2 años o más**, herencias y donaciones) es del **15%**. Si el activo se poseyó por menos de 2 años, la utilidad tributa como renta ordinaria.",
+                source: "Estatuto Tributario, Artículos 300, 313 y 314."
+            },
+            {
+                keywords: ["bancarizacion", "efectivo", "771-5", "medios de pago"],
+                question: "¿En qué consiste el principio de bancarización fiscal?",
+                answer: "Consiste en la exigencia legal de canalizar los pagos a terceros a través del sistema financiero (transferencias, cheques consolidados, tarjetas). Los pagos en efectivo que superen los límites fijados por la ley son **rechazados fiscalmente** como costo, deducción o IVA descontable.",
+                source: "Estatuto Tributario Colombiano, Artículo 771-5."
+            },
+            // IVA y Retenciones
+            {
+                keywords: ["tarifa iva", "19%", "periodicidad", "bimestral", "cuatrimestral", "92000 uvt"],
+                question: "¿Cuál es la tarifa del IVA y su periodicidad de declaración?",
+                answer: "La tarifa general del IVA es del **19%**. Su declaración es **bimestral** para Grandes Contribuyentes y exportadores o empresas con ingresos brutos iguales o superiores a 92.000 UVT. Es **cuatrimestral** para quienes obtengan ingresos inferiores a 92.000 UVT.",
+                source: "Estatuto Tributario, Artículos 468 y 600."
+            },
+            {
+                keywords: ["reteiva", "15%", "retencion iva"],
+                question: "¿Cuál es la tarifa general del ReteIVA?",
+                answer: "La tarifa general del mecanismo de retención en la fuente a título de IVA (ReteIVA) es del **15% del valor del IVA generado** y facturado en la operación.",
+                source: "Estatuto Tributario Colombiano, Artículo 437-1."
+            },
+            {
+                keywords: ["ineficacia", "580-1", "retencion sin pago"],
+                question: "¿Qué ocurre si se presenta la declaración de retención en la fuente sin pago?",
+                answer: "La declaración resulta **ineficaz de pleno derecho** (carece de valor jurídico y se entiende como no presentada). El agente retenedor debe presentarla nuevamente liquidando sanciones por extemporaneidad e intereses de mora.",
+                source: "Estatuto Tributario Colombiano, Artículo 580-1."
+            },
+            // Régimen Simple (RST)
+            {
+                keywords: ["rst", "regimen simple", "100000 uvt", "formulario 2593", "formulario 260"],
+                question: "¿Cuáles son los aspectos clave del Régimen Simple de Tributación (RST)?",
+                answer: "El RST sustituye la Renta e integra ICA y Consumo para contribuyentes con ingresos inferiores a **100.000 UVT**. Declara anticipos bimestrales en el **Formulario 2593** y su declaración consolidada anual en el **Formulario 260**. Permite descontar el 100% de los aportes a pensiones de nómina y el 0.5% de ventas recibidas por medios electrónicos.",
+                source: "Estatuto Tributario, Artículos 903-914."
+            },
+            // Habeas Data
+            {
+                keywords: ["habeas data", "1581", "datos personales", "sic", "datos sensibles"],
+                question: "¿Cómo se regula la protección de datos personales en Colombia?",
+                answer: "La **Ley Estatutaria 1581 de 2012** regula el Habeas Data bajo el principio de finalidad. Exige autorización previa y explícita para **datos sensibles** (salud, biometría). La **Superintendencia de Industria y Comercio (SIC)** actúa como autoridad de control y puede imponer multas de hasta 2.000 SMLMV.",
+                source: "Ley 1581 de 2012 y normas regulatorias de la SIC."
+            }
+        ];
+
+        // Función para alternar el menú lateral en dispositivos móviles (Drawer)
+        function toggleSidebar() {
+            const sidebar = document.getElementById('appSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        // Funciones para el Modal Pop-up de Reinicio
+        function openRestartModal() {
+            const modal = document.getElementById('restartModal');
+            const content = document.getElementById('modalContent');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }
+
+        function closeRestartModal() {
+            const modal = document.getElementById('restartModal');
+            const content = document.getElementById('modalContent');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+        }
+
+        function confirmRestart(action) {
+            closeRestartModal();
+            clearChat();
+            if (action === 'sidebar') {
+                // En móvil abre el panel lateral para seleccionar un tema fresco
+                if (window.innerWidth < 768) {
+                    toggleSidebar();
+                }
+            }
+        }
+
+        // Función para procesar y buscar respuestas
+        function searchAnswer(userQuery) {
+            const cleanQuery = userQuery.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const words = cleanQuery.split(/\s+/).filter(w => w.length > 2);
+
+            let bestMatch = null;
+            let maxScore = 0;
+
+            knowledgeBase.forEach(item => {
+                let score = 0;
+                item.keywords.forEach(kw => {
+                    const cleanKw = kw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    if (cleanQuery.includes(cleanKw)) {
+                        score += 3;
+                    }
+                    words.forEach(word => {
+                        if (cleanKw.includes(word) || word.includes(cleanKw)) {
+                            score += 1;
+                        }
+                    });
+                });
+
+                if (score > maxScore) {
+                    maxScore = score;
+                    bestMatch = item;
+                }
+            });
+
+            if (maxScore >= 3 && bestMatch) {
+                return {
+                    text: bestMatch.answer,
+                    source: bestMatch.source
+                };
+            }
+
+            return {
+                text: "No encontré una coincidencia exacta en mi base de datos para esa consulta específica. Te sugiero consultar sobre **Facturación Electrónica, Nómina, Exógena, Renta de personas jurídicas/naturales, IVA, Retención en la fuente, Régimen Simple (RST)** o **Protección de datos (Ley 1581)**.",
+                source: "Base de Datos Normativa NOVA"
+            };
+        }
+
+        function handleSend(e) {
+            e.preventDefault();
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // Renderizar mensaje de usuario
+            appendMessage(message, 'user');
+            input.value = '';
+
+            // Renderizar animación de escribiendo
+            const typingId = appendTypingIndicator();
+
+            setTimeout(() => {
+                removeTypingIndicator(typingId);
+                const response = searchAnswer(message);
+                appendMessage(response.text, 'bot', response.source);
+            }, 700);
+        }
+
+        function quickQuery(topic) {
+            document.getElementById('userInput').value = "¿Qué debo saber sobre " + topic + "?";
+            const fakeEvent = { preventDefault: () => {} };
+            handleSend(fakeEvent);
+            
+            // Si está en móvil, oculta el sidebar automáticamente tras seleccionar
+            if (window.innerWidth < 768) {
+                toggleSidebar();
+            }
+        }
+
+        function appendMessage(text, sender, source = null) {
+            const container = document.getElementById('chatMessages');
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex items-start space-x-3 ${sender === 'user' ? 'justify-end' : 'max-w-3xl'}`;
+
+            const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+
+            if (sender === 'user') {
+                wrapper.innerHTML = `
+                    <div class="bg-nova-blue text-white p-4 rounded-2xl rounded-tr-none shadow-sm max-w-xl text-sm leading-relaxed">
+                        <p>${formattedText}</p>
+                    </div>
+                    <div class="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center shrink-0 mt-1 shadow">
+                        <i class="fa-solid fa-user text-xs"></i>
+                    </div>
+                `;
+            } else {
+                wrapper.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-nova-blue text-white flex items-center justify-center shrink-0 mt-1 shadow">
+                        <i class="fa-solid fa-robot text-sm"></i>
+                    </div>
+                    <div class="bg-white border border-slate-200 text-slate-800 p-4 rounded-2xl rounded-tl-none shadow-sm space-y-2 text-sm leading-relaxed">
+                        <p class="font-semibold text-nova-blue text-xs uppercase tracking-wider">Respuesta NOVA</p>
+                        <p>${formattedText}</p>
+                        ${source ? `<div class="pt-2 border-t border-slate-100 text-[11px] text-slate-400 italic">Fuente: ${source}</div>` : ''}
+                    </div>
+                `;
+            }
+
+            container.appendChild(wrapper);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function appendTypingIndicator() {
+            const container = document.getElementById('chatMessages');
+            const id = 'typing-' + Date.now();
+            const wrapper = document.createElement('div');
+            wrapper.id = id;
+            wrapper.className = 'flex items-start space-x-3 max-w-xl';
+            wrapper.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-nova-blue text-white flex items-center justify-center shrink-0 mt-1">
+                    <i class="fa-solid fa-robot text-sm"></i>
+                </div>
+                <div class="bg-white border border-slate-200 p-3 rounded-2xl rounded-tl-none shadow-sm flex items-center space-x-1">
+                    <span class="w-2 h-2 bg-nova-light rounded-full animate-bounce"></span>
+                    <span class="w-2 h-2 bg-nova-light rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                    <span class="w-2 h-2 bg-nova-light rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                </div>
+            `;
+            container.appendChild(wrapper);
+            container.scrollTop = container.scrollHeight;
+            return id;
+        }
+
+        function removeTypingIndicator(id) {
+            const elem = document.getElementById(id);
+            if (elem) elem.remove();
+        }
+
+        function clearChat() {
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = `
+                <div class="flex items-start space-x-3 max-w-3xl">
+                    <div class="w-8 h-8 rounded-full bg-nova-blue text-white flex items-center justify-center shrink-0 mt-1 shadow">
+                        <i class="fa-solid fa-robot text-sm"></i>
+                    </div>
+                    <div class="bg-white border border-slate-200 text-slate-800 p-4 rounded-2xl rounded-tl-none shadow-sm space-y-2">
+                        <p class="font-medium text-nova-blue text-sm">¡Nueva conversación iniciada! ¿En qué puedo colaborarte nuevamente?</p>
+                        <p class="text-sm text-slate-600 leading-relaxed">
+                            Puedes seleccionar un tema del menú lateral o realizar directamente tu consulta fiscal.
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
