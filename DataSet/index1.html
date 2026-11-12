@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma Dataset ICA Colombia - Lecciones Aprendidas</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- PapaParse para CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        theme: {
+                            bg: 'var(--bg-main)',
+                            card: 'var(--bg-card)',
+                            header: 'var(--bg-header)',
+                            text: 'var(--text-main)',
+                            muted: 'var(--text-muted)',
+                            accent: 'var(--accent-color)',
+                            accentHover: 'var(--accent-hover)',
+                            border: 'var(--border-color)',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        
+        /* TEMAS DINÁMICOS */
+        :root[data-theme="light"] {
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-header: #1e1b4b;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --accent-color: #4f46e5;
+            --accent-hover: #4338ca;
+            --border-color: #e2e8f0;
+        }
+
+        :root[data-theme="dark"] {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --bg-header: #090d16;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-color: #6366f1;
+            --accent-hover: #4f46e5;
+            --border-color: #334155;
+        }
+
+        :root[data-theme="verde"] {
+            --bg-main: #f0fdf4;
+            --bg-card: #ffffff;
+            --bg-header: #064e3b;
+            --text-main: #022c22;
+            --text-muted: #4b5563;
+            --accent-color: #059669;
+            --accent-hover: #047857;
+            --border-color: #bbf7d0;
+        }
+
+        :root[data-theme="morado"] {
+            --bg-main: #faf5ff;
+            --bg-card: #ffffff;
+            --bg-header: #3b0764;
+            --text-main: #2e1065;
+            --text-muted: #6b7280;
+            --accent-color: #9333ea;
+            --accent-hover: #7e22ce;
+            --border-color: #e9d5ff;
+        }
+
+        :root[data-theme="azul"] {
+            --bg-main: #f0f9ff;
+            --bg-card: #ffffff;
+            --bg-header: #0c4a6e;
+            --text-main: #0c4a6e;
+            --text-muted: #64748b;
+            --accent-color: #0284c7;
+            --accent-hover: #0369a1;
+            --border-color: #bae6fd;
+        }
+
+        :root[data-theme="sepia"] {
+            --bg-main: #fef3c7;
+            --bg-card: #fffbeb;
+            --bg-header: #78350f;
+            --text-main: #451a03;
+            --text-muted: #78350f;
+            --accent-color: #d97706;
+            --accent-hover: #b45309;
+            --border-color: #fde68a;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-[var(--bg-main)] text-[var(--text-main)] min-h-screen flex flex-col">
+
+    <!-- HEADER / NAVBAR -->
+    <header class="bg-[var(--bg-header)] text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchView('public')">
+                <div class="p-2 bg-white/10 rounded-lg backdrop-blur-md">
+                    <i data-lucide="building-2" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">Dataset ICA Colombia</h1>
+                    <p class="text-xs opacity-80">Lecciones Aprendidas y Gestión Municipal</p>
+                </div>
+            </div>
+
+            <!-- Header Action Controls & Theme Selector -->
+            <div class="flex items-center space-x-3">
+                <!-- Theme Switcher Selector -->
+                <div class="relative flex items-center">
+                    <i data-lucide="palette" class="w-4 h-4 text-white/80 absolute left-2.5 pointer-events-none"></i>
+                    <select id="themeSelect" onchange="changeTheme(this.value)" class="bg-white/10 text-white text-xs rounded-lg pl-8 pr-3 py-1.5 font-medium border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer">
+                        <option value="light" class="text-slate-900">☀️ Tema Claro</option>
+                        <option value="dark" class="text-slate-900">🌙 Modo Oscuro</option>
+                        <option value="verde" class="text-slate-900">🌿 Verde Santander</option>
+                        <option value="morado" class="text-slate-900">🔮 Morado Neón</option>
+                        <option value="azul" class="text-slate-900">🌊 Azul Corporativo</option>
+                        <option value="sepia" class="text-slate-900">📜 Cálido Sepia</option>
+                    </select>
+                </div>
+
+                <button id="viewToggleBtn" onclick="switchView('public')" class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium text-white hover:bg-white/10 transition">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                    <span>Consulta Pública</span>
+                </button>
+
+                <div id="authContainer">
+                    <!-- Dynamic Auth Button -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- NOTIFICATION TOAST CONTAINER -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-grow">
+        
+        <!-- ========================================== -->
+        <!-- PUBLIC VIEW: INDEX & SEARCH CONSULTATION -->
+        <!-- ========================================== -->
+        <section id="publicView" class="block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- Hero / Explanation Section -->
+            <div class="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-6 md:p-10 shadow-xl mb-8 relative overflow-hidden">
+                <div class="max-w-4xl relative z-10">
+                    <div class="inline-flex items-center space-x-2 bg-[var(--accent-color)] text-white px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-4 shadow-sm">
+                        <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+                        <span>Marco Tributario Territorial</span>
+                    </div>
+                    <h2 class="text-2xl sm:text-4xl font-extrabold tracking-tight mb-4">
+                        ¿Qué es y cuál es la Importancia del Impuesto de Industria y Comercio (ICA) en Colombia?
+                    </h2>
+                    <p class="text-[var(--text-muted)] text-sm sm:text-base leading-relaxed mb-6">
+                        El <strong>Impuesto de Industria y Comercio (ICA)</strong> es un gravamen de carácter municipal directo que recae sobre la realización de actividades industriales, comerciales o de servicios en cada municipio colombiano. Constituye la <strong>columna vertebral del recaudo tributario local</strong> y financia la infraestructura social, de salud y educación pública.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-[var(--border-color)] text-xs sm:text-sm">
+                        <div class="bg-[var(--bg-main)] p-4 rounded-xl border border-[var(--border-color)]">
+                            <h3 class="font-bold mb-1 flex items-center gap-2 text-[var(--accent-color)]">
+                                <i data-lucide="coins" class="w-4 h-4"></i> Autonomía Fiscal
+                            </h3>
+                            <p class="text-[var(--text-muted)] text-xs">Regulado localmente según acuerdos municipales basados en la Ley 14 de 1983 y Ley 1819 de 2016.</p>
+                        </div>
+                        <div class="bg-[var(--bg-main)] p-4 rounded-xl border border-[var(--border-color)]">
+                            <h3 class="font-bold mb-1 flex items-center gap-2 text-[var(--accent-color)]">
+                                <i data-lucide="git-fork" class="w-4 h-4"></i> Categorización Ley 617
+                            </h3>
+                            <p class="text-[var(--text-muted)] text-xs">Permite la comparación equitativa entre municipios de la misma categoría presupuestal.</p>
+                        </div>
+                        <div class="bg-[var(--bg-main)] p-4 rounded-xl border border-[var(--border-color)]">
+                            <h3 class="font-bold mb-1 flex items-center gap-2 text-[var(--accent-color)]">
+                                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Interoperabilidad
+                            </h3>
+                            <p class="text-[var(--text-muted)] text-xs">Estandarización de tablas y exportación en texto plano para el envío a Contaduría Pública.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search and Filter Panel -->
+            <div class="bg-[var(--bg-card)] rounded-2xl shadow-md border border-[var(--border-color)] p-6 mb-8">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border-color)]">
+                    <h3 class="font-bold text-lg flex items-center gap-2">
+                        <i data-lucide="filter" class="w-5 h-5 text-[var(--accent-color)]"></i>
+                        Buscador y Caracterización de Municipios
+                    </h3>
+                    <span id="totalRecordsBadge" class="text-xs bg-[var(--accent-color)] text-white font-semibold px-3 py-1 rounded-full">
+                        Cargando registros...
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase mb-1 text-[var(--text-muted)]">Departamento</label>
+                        <select id="filterDept" onchange="handleDeptChange()" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] text-[var(--text-main)] text-sm rounded-lg p-2.5 focus:ring-2 focus:ring-[var(--accent-color)]">
+                            <option value="">-- Todos los Departamentos --</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase mb-1 text-[var(--text-muted)]">Municipio</label>
+                        <select id="filterMuni" onchange="performSearch()" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] text-[var(--text-main)] text-sm rounded-lg p-2.5 focus:ring-2 focus:ring-[var(--accent-color)]">
+                            <option value="">-- Todos los Municipios --</option>
+                        </select>
+                    </div>
+
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-semibold uppercase mb-1 text-[var(--text-muted)]">Búsqueda General / CIIU / Término</label>
+                        <div class="relative">
+                            <input type="text" id="filterKeyword" oninput="performSearch()" placeholder="Buscar actividad, código CIIU, tarifa o concepto..." class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] text-[var(--text-main)] text-sm rounded-lg p-2.5 pl-10 focus:ring-2 focus:ring-[var(--accent-color)]">
+                            <i data-lucide="search" class="w-4 h-4 text-[var(--text-muted)] absolute left-3 top-3.5"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Caracterización del Municipio Seleccionado -->
+                <div id="muniDetailsCard" class="hidden mt-4 pt-4 border-t border-[var(--border-color)] bg-[var(--bg-main)] p-4 rounded-xl flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <span class="text-xs font-bold text-[var(--accent-color)] uppercase tracking-wider block">Caracterización Territorial</span>
+                        <h4 class="font-extrabold text-base" id="muniCardName">Bucaramanga</h4>
+                    </div>
+                    <div class="flex flex-wrap gap-3 text-xs">
+                        <span class="bg-[var(--bg-card)] border border-[var(--border-color)] px-3 py-1 rounded-lg"><strong>Código DANE:</strong> <span id="muniDane">68001</span></span>
+                        <span class="bg-[var(--bg-card)] border border-[var(--border-color)] px-3 py-1 rounded-lg"><strong>Categoría Ley 617:</strong> <span id="muniCat">1ª Categoría</span></span>
+                        <span class="bg-[var(--bg-card)] border border-[var(--border-color)] px-3 py-1 rounded-lg"><strong>Estatuto Tributario:</strong> <span id="muniEstatuto">Acuerdo 026/2018</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section with Module Tabs -->
+            <div id="resultsWrapper" class="bg-[var(--bg-card)] rounded-2xl shadow-md border border-[var(--border-color)] overflow-hidden">
+                <div class="bg-[var(--bg-main)] px-6 py-4 border-b border-[var(--border-color)] flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h4 class="font-bold text-base" id="selectedMuniTitle">Resultados Consolidados del ICA</h4>
+                        <p class="text-xs text-[var(--text-muted)]" id="searchSummary">Selecciona un municipio o explora los 13 módulos abajo.</p>
+                    </div>
+                </div>
+
+                <!-- Horizontal Scroll Module Selector Tabs -->
+                <div class="border-b border-[var(--border-color)] bg-[var(--bg-main)]/50 px-4 pt-2 overflow-x-auto custom-scrollbar flex space-x-1" id="publicModuleTabs">
+                    <!-- Populated Dynamically -->
+                </div>
+
+                <!-- Module Details View Container -->
+                <div class="p-6" id="publicModuleContent">
+                    <!-- Dynamic query content -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- DASHBOARD ADMIN (13 BOTONES/MÓDULOS EQUIPOS) -->
+        <!-- ========================================== -->
+        <section id="adminView" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <div class="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-6 shadow-md mb-8 flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold">Dashboard de Administración - Dataset ICA</h2>
+                    <p class="text-xs text-[var(--text-muted)]">Acceso a las 13 pestañas temáticas para la carga masiva y conexión con versiones de equipos de trabajo.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="bg-emerald-500/10 text-emerald-600 font-semibold text-xs px-3 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Modo Administrador Activo
+                    </span>
+                </div>
+            </div>
+
+            <!-- GRID DE LOS 13 MÓDULOS DE LOS EQUIPOS DE TRABAJO -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="adminGridModules">
+                <!-- Populated Dynamically with 13 cards -->
+            </div>
+
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-[var(--bg-header)] text-white/70 text-xs py-6 border-t border-[var(--border-color)] mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center space-y-2">
+            <p>Dataset de Lecciones Aprendidas - Impuesto de Industria y Comercio (ICA) Colombia</p>
+            <p class="text-white/50">Estandarización tributaria para entidades públicas, universidades y contribuyentes.</p>
+        </div>
+    </footer>
+
+    <!-- MODAL: AUTHENTICATION (LOGIN) -->
+    <div id="loginModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-[var(--bg-card)] text-[var(--text-main)] rounded-2xl shadow-2xl max-w-md w-full p-6 border border-[var(--border-color)] relative">
+            <button onclick="toggleLoginModal(false)" class="absolute top-4 right-4 text-[var(--text-muted)] hover:opacity-80">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div class="text-center mb-6">
+                <div class="w-12 h-12 bg-[var(--accent-color)] text-white rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="lock" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold">Ingreso Administrativo</h3>
+                <p class="text-xs text-[var(--text-muted)] mt-1">Acceso para la carga y gestión de versiones del dataset</p>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase mb-1 text-[var(--text-muted)]">Usuario</label>
+                    <input type="text" id="loginUser" required placeholder="admin" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] text-[var(--text-main)] text-sm rounded-lg p-2.5">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase mb-1 text-[var(--text-muted)]">Contraseña</label>
+                    <input type="password" id="loginPass" required placeholder="••••••••" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] text-[var(--text-main)] text-sm rounded-lg p-2.5">
+                </div>
+
+                <div class="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-xs">
+                    <p class="font-semibold mb-0.5 text-[var(--accent-color)]">Credenciales Por Defecto:</p>
+                    <p>Usuario: <code class="font-bold">admin</code> | Contraseña: <code class="font-bold">admin</code></p>
+                </div>
+
+                <button type="submit" class="w-full bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] text-white font-semibold py-2.5 rounded-lg shadow-md transition flex items-center justify-center gap-2">
+                    <i data-lucide="log-in" class="w-4 h-4"></i> Iniciar Sesión
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: VERSIÓN DE IMPLEMENTACIÓN DEL EQUIPO (IFRAME / INTEGRACIÓN) -->
+    <div id="teamVersionModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 flex items-center justify-center hidden p-4 sm:p-6">
+        <div class="bg-[var(--bg-card)] text-[var(--text-main)] rounded-2xl shadow-2xl max-w-5xl w-full h-[85vh] flex flex-col border border-[var(--border-color)] overflow-hidden">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 bg-[var(--bg-main)] border-b border-[var(--border-color)] flex items-center justify-between">
+                <div>
+                    <span class="text-xs font-bold text-[var(--accent-color)] uppercase tracking-wider">Implementación del Equipo</span>
+                    <h3 class="text-lg font-bold" id="teamModalTitle">Nombre del Módulo</h3>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="openExternalTeamUrl()" class="text-xs bg-[var(--bg-card)] border border-[var(--border-color)] px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 hover:bg-[var(--bg-main)]">
+                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Abrir en Pestaña Nueva
+                    </button>
+                    <button onclick="closeTeamVersionModal()" class="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-main)]">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Content / Iframe Simulator -->
+            <div class="flex-grow p-6 bg-[var(--bg-main)] overflow-y-auto">
+                <div class="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-6 shadow-sm mb-4">
+                    <h4 class="font-bold text-sm mb-2 flex items-center gap-2 text-[var(--accent-color)]">
+                        <i data-lucide="code" class="w-4 h-4"></i> Configuración de URL de la Implementación del Equipo
+                    </h4>
+                    <div class="flex gap-2">
+                        <input type="url" id="teamUrlInput" placeholder="https://equipo-modulo.ejemplo.org/api/version" class="flex-grow bg-[var(--bg-main)] border border-[var(--border-color)] text-xs rounded-lg p-2.5">
+                        <button onclick="saveTeamUrl()" class="bg-[var(--accent-color)] text-white text-xs px-4 py-2.5 rounded-lg font-semibold">
+                            Guardar URL
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Frame Viewer Container -->
+                <div id="teamFrameContainer" class="w-full h-96 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl flex items-center justify-center text-center p-8">
+                    <div class="max-w-md space-y-3">
+                        <div class="w-16 h-16 bg-[var(--accent-color)]/10 text-[var(--accent-color)] rounded-full flex items-center justify-center mx-auto">
+                            <i data-lucide="layers" class="w-8 h-8"></i>
+                        </div>
+                        <h4 class="font-bold text-base">Entorno Autónomo de Implementación</h4>
+                        <p class="text-xs text-[var(--text-muted)]">Aquí se despliega la interfaz del equipo responsable de este módulo específico. Puedes cargar una URL activa o simular los resultados.</p>
+                        <div class="pt-2 flex justify-center gap-2">
+                            <button onclick="simulateTeamApp()" class="bg-[var(--accent-color)] text-white text-xs px-4 py-2 rounded-lg font-medium">
+                                Simular Vista del Equipo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: GESTIÓN DE TABLA / ARCHIVOS POR MÓDULO -->
+    <div id="moduleDataModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 flex items-center justify-center hidden p-4 sm:p-6">
+        <div class="bg-[var(--bg-card)] text-[var(--text-main)] rounded-2xl shadow-2xl max-w-6xl w-full h-[90vh] flex flex-col border border-[var(--border-color)] overflow-hidden">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 bg-[var(--bg-main)] border-b border-[var(--border-color)] flex items-center justify-between">
+                <div>
+                    <span class="text-xs font-bold text-[var(--accent-color)] uppercase tracking-wider" id="moduleDataSub">Gestión Masiva de Datos</span>
+                    <h3 class="text-xl font-bold" id="moduleDataTitle">Módulo</h3>
+                </div>
+                <button onclick="closeModuleDataModal()" class="p-1.5 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-main)]">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="flex-grow p-6 overflow-y-auto space-y-6">
+                <!-- Dropzone / Drag and Drop File Upload -->
+                <div class="bg-[var(--bg-main)] border-2 border-dashed border-[var(--accent-color)]/40 hover:border-[var(--accent-color)] rounded-xl p-6 text-center transition relative group">
+                    <input type="file" id="modalFileInput" accept=".json, .csv" onchange="handleModalFileSelect(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                    <div class="flex flex-col items-center justify-center space-y-2 pointer-events-none">
+                        <div class="p-3 bg-[var(--bg-card)] text-[var(--accent-color)] rounded-full shadow-sm group-hover:scale-110 transition">
+                            <i data-lucide="upload-cloud" class="w-8 h-8"></i>
+                        </div>
+                        <p class="text-sm font-semibold">Arrastra o selecciona un archivo <span class="text-[var(--accent-color)] font-bold">.JSON</span> o <span class="text-[var(--accent-color)] font-bold">.CSV</span></p>
+                        <p class="text-xs text-[var(--text-muted)]">Actualiza masivamente el conjunto de datos para este módulo municipal</p>
+                        
+                        <div class="pt-2 flex items-center space-x-3 pointer-events-auto">
+                            <button onclick="downloadModuleTemplate('json')" class="text-xs text-[var(--accent-color)] hover:underline flex items-center gap-1 font-semibold">
+                                <i data-lucide="file-code" class="w-3.5 h-3.5"></i> Plantilla JSON
+                            </button>
+                            <span class="text-[var(--border-color)]">•</span>
+                            <button onclick="downloadModuleTemplate('csv')" class="text-xs text-[var(--accent-color)] hover:underline flex items-center gap-1 font-semibold">
+                                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> Plantilla CSV
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Export Options & Action Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-3 bg-[var(--bg-main)] p-4 rounded-xl border border-[var(--border-color)]">
+                    <h4 class="font-bold text-sm flex items-center gap-2">
+                        <i data-lucide="table" class="w-4 h-4 text-[var(--accent-color)]"></i>
+                        Registros Actuales (<span id="modalRecordCount">0</span>)
+                    </h4>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="exportPlainFormat('pipe')" class="px-3 py-1.5 bg-[var(--bg-card)] hover:bg-[var(--bg-main)] text-xs font-semibold rounded-lg border border-[var(--border-color)] flex items-center gap-1.5">
+                            <i data-lucide="file-text" class="w-3.5 h-3.5 text-amber-500"></i> Texto Plano (|)
+                        </button>
+                        <button onclick="exportPlainFormat('csv')" class="px-3 py-1.5 bg-[var(--bg-card)] hover:bg-[var(--bg-main)] text-xs font-semibold rounded-lg border border-[var(--border-color)] flex items-center gap-1.5">
+                            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-500"></i> CSV
+                        </button>
+                        <button onclick="exportPlainFormat('json')" class="px-3 py-1.5 bg-[var(--bg-card)] hover:bg-[var(--bg-main)] text-xs font-semibold rounded-lg border border-[var(--border-color)] flex items-center gap-1.5">
+                            <i data-lucide="code" class="w-3.5 h-3.5 text-indigo-500"></i> JSON
+                        </button>
+                        <button onclick="openAddRecordModal()" class="px-3 py-1.5 bg-[var(--accent-color)] text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> Agregar Fila
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Interactive Data Table -->
+                <div class="border border-[var(--border-color)] rounded-xl overflow-x-auto custom-scrollbar bg-[var(--bg-card)]">
+                    <table class="w-full text-left text-xs text-[var(--text-main)]" id="modalDataTable">
+                        <thead class="bg-[var(--bg-main)] uppercase font-semibold border-b border-[var(--border-color)]">
+                            <tr id="modalTableHeader"></tr>
+                        </thead>
+                        <tbody id="modalTableBody" class="divide-y divide-[var(--border-color)]"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: MANUAL ADD RECORD -->
+    <div id="addRecordModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-[var(--bg-card)] text-[var(--text-main)] rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-[var(--border-color)] relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeAddRecordModal()" class="absolute top-4 right-4 text-[var(--text-muted)] hover:opacity-80">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <h3 class="text-lg font-bold mb-1">Agregar Nuevo Registro</h3>
+            <p class="text-xs text-[var(--text-muted)] mb-4">Complete los campos requeridos para este módulo.</p>
+
+            <form id="addRecordForm" onsubmit="saveManualRecord(event)" class="space-y-3 text-xs">
+                <!-- Fields rendered dynamically -->
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <!-- ========================================== -->
+    <script>
+        // 13 REQUIRED MODULES DEFINITION
+        const MODULES = [
+            { id: "principios", name: "Principios", desc: "Principios rectores del ICA (Legalidad, Equidad, Territorialidad, Eficiencia)." },
+            { id: "elementos", name: "Elementos del tributo", desc: "Sujeto Activo, Sujeto Pasivo, Hecho Generador, Base Gravable y Tarifa." },
+            { id: "actividades_no_sujetas", name: "Actividades no sujetas", desc: "Actividades excluidas del impuesto por ley (Art 39 Ley 14/83)." },
+            { id: "deducciones_exclusiones", name: "Deducciones y exclusiones", desc: "Devoluciones, exportaciones, venta de activos fijos, ingresos no operacionales." },
+            { id: "exenciones_incentivos", name: "Exenciones e incentivos", desc: "Incentivos por creación de empleo, zonas francas, exenciones temporales." },
+            { id: "tarifas", name: "Tarifas", desc: "Tarifas por mil (‰) según código CIIU y actividad comercial/servicios/industrial." },
+            { id: "economia_digital", name: "Economía digital", desc: "Tributación de plataformas digitales, comercio electrónico y servicios remotos." },
+            { id: "territorialidad", name: "Territorialidad", desc: "Reglas de presencia económica y sitio de ejecución de la actividad." },
+            { id: "s_financiero", name: "S_financiero", desc: "Bases gravables especiales e ingreso por intereses/comisiones del sector financiero." },
+            { id: "rst", name: "RST", desc: "Régimen Simple de Tributación y consolidación de tarifa unificada nacional." },
+            { id: "regimen_preferencial", name: "Régimen preferencial", desc: "Simplificado o preferencial municipal y topes de ingresos UVT." },
+            { id: "avisos_tableros", name: "Avisos y tableros", desc: "Impuesto complementario de avisos y tableros (15% sobre la base del ICA)." },
+            { id: "sobretasa_bomberil", name: "Sobretasa bomberil", desc: "Recargo de financiación para cuerpos de bomberos locales." }
+        ];
+
+        // MUNICIPAL CHARACTERISTICS MAP
+        const MUNI_DETAILS = {
+            "Bucaramanga": { dane: "68001", cat: "1ª Categoría", estatuto: "Acuerdo 026 de 2018" },
+            "Girón": { dane: "68307", cat: "2ª Categoría", estatuto: "Acuerdo 017 de 2021" },
+            "Floridablanca": { dane: "68276", cat: "1ª Categoría", estatuto: "Acuerdo 009 de 2019" },
+            "Bogotá D.C.": { dane: "11001", cat: "Especial", estatuto: "Decreto 352 de 2002" },
+            "Medellín": { dane: "05001", cat: "Especial", estatuto: "Acuerdo 066 de 2017" },
+            "Cali": { dane: "76001", cat: "Especial", estatuto: "Acuerdo 0416 de 2017" }
+        };
+
+        // DATASET INICIAL DE PRUEBA REALISTA
+        let dataset = {
+            principios: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", principio: "Territorialidad", concepto: "Presencia comercial o prestación directa en la ciudad", acuerdo: "Acuerdo 026 de 2018", leccion_aprendida: "Se requiere cruce continuo con facturación electrónica DIAN." },
+                { id: 2, departamento: "Bogotá D.C.", municipio: "Bogotá D.C.", principio: "Legalidad", concepto: "Tarifas aprobadas exclusivamente por el Concejo", acuerdo: "Decreto Ley 1421 de 1993", leccion_aprendida: "Garantiza seguridad jurídica frente a cobros indebidos." }
+            ],
+            elementos: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", sujeto_activo: "Municipio de Bucaramanga", sujeto_pasivo: "Persona Natural / Jurídica", hecho_generador: "Ejercicio comercial/industrial/servicios", base_gravable: "Ingresos brutos menos deducciones", tarifa: "4.0 a 10.0 por mil" },
+                { id: 2, departamento: "Antioquia", municipio: "Medellín", sujeto_activo: "Distrito de Medellín", sujeto_pasivo: "Contribuyentes en jurisdicción", hecho_generador: "Actividades lucrativas directas/indirectas", base_gravable: "Totalidad de ingresos ordinarios", tarifa: "2.0 a 10.0 por mil" }
+            ],
+            actividades_no_sujetas: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", articulo_ley: "Art 39 Ley 14/1983", descripcion: "Producción agrícola primaria sin transformación", observaciones: "La venta directa de finca no genera tributo." },
+                { id: 2, departamento: "Valle del Cauca", municipio: "Cali", articulo_ley: "Art 39 Ley 14/1983", descripcion: "Edición y venta de libros y revistas", observaciones: "Protegido por la Ley del Libro." }
+            ],
+            deducciones_exclusiones: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", concepto: "Venta de activos fijos", soportes: "Declaración de Renta y Libro Fiscal", deduccion_porcentaje: 100 },
+                { id: 2, departamento: "Santander", municipio: "Girón", concepto: "Devoluciones y descuentos en ventas", soportes: "Notas crédito contables", deduccion_porcentaje: 100 }
+            ],
+            exenciones_incentivos: [
+                { id: 1, departamento: "Santander", municipio: "Floridablanca", incentivo: "Generación de primer empleo joven", vigencia: "5 años", beneficio: "50% exención" },
+                { id: 2, departamento: "Antioquia", municipio: "Medellín", incentivo: "Empresas en Zona de Innovación (Ruta N)", vigencia: "3 años", beneficio: "100% exención" }
+            ],
+            tarifas: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", ciiu: "4711", actividad: "Comercio minorista en tiendas", tarifa_por_mil: 5.0, periodicidad: "Bimestral" },
+                { id: 2, departamento: "Santander", municipio: "Bucaramanga", ciiu: "6201", actividad: "Desarrollo de software y TIC", tarifa_por_mil: 7.0, periodicidad: "Bimestral" },
+                { id: 3, departamento: "Bogotá D.C.", municipio: "Bogotá D.C.", ciiu: "6201", actividad: "Servicios informáticos", tarifa_por_mil: 9.66, periodicidad: "Bimestral" }
+            ],
+            economia_digital: [
+                { id: 1, departamento: "Bogotá D.C.", municipio: "Bogotá D.C.", regla: "Presencia económica significativa por App", retencion: "Pasarelas de pago", acuerdo: "Acuerdo 780 de 2020" },
+                { id: 2, departamento: "Santander", municipio: "Bucaramanga", regla: "Ventas por e-commerce con entrega local", retencion: "Retención en la fuente comprador", acuerdo: "Acuerdo 026 de 2018" }
+            ],
+            territorialidad: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", regla_servicios: "Lugar de ejecución física del servicio", regla_comercio: "Lugar de despacho / establecimiento" },
+                { id: 2, departamento: "Valle del Cauca", municipio: "Cali", regla_servicios: "Sede principal del contrato", regla_comercio: "Punto de venta directo" }
+            ],
+            s_financiero: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", entidad: "Bancos y Entidades Crediticias", base_especial: "Intereses + Comisiones + Rendimientos", tarifa: 5.0 },
+                { id: 2, departamento: "Bogotá D.C.", municipio: "Bogotá D.C.", entidad: "Compañías de Seguros", base_especial: "Primas emitidas menos siniestros", tarifa: 11.04 }
+            ],
+            rst: [
+                { id: 1, departamento: "Nacional", municipio: "Todos", norma: "Art 903 ET - Ley 2010 de 2019", mecanismo: "Consolidación en formulario 260 DIAN", giro_municipal: "Transferencia directa MinHacienda" }
+            ],
+            regimen_preferencial: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", tope_uvt: 3500, establecimientos: 1, pago_fijo: "Tarifa fija anual según rango" },
+                { id: 2, departamento: "Antioquia", municipio: "Medellín", tope_uvt: 3500, establecimientos: 1, pago_fijo: "Categorización simplificada por UVT" }
+            ],
+            avisos_tableros: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", tarifa_porcentaje: 15.0, hecho: "Colocación de vallas, avisos o emblemas visibles en espacio público" },
+                { id: 2, departamento: "Bogotá D.C.", municipio: "Bogotá D.C.", tarifa_porcentaje: 15.0, hecho: "Exhibición de marcas comerciales" }
+            ],
+            sobretasa_bomberil: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", base_calculo: "Sobre el impuesto de ICA liquidado", porcentaje: 5.0, destinacion: "Cuerpo Oficial de Bomberos de Bucaramanga" },
+                { id: 2, departamento: "Santander", municipio: "Girón", base_calculo: "Sobre la liquidación privada del ICA", porcentaje: 4.0, destinacion: "Convenio Bomberos Voluntarios" }
+            ]
+        };
+
+        // EQUIPS IMPLEMENTATION URLS STORAGE
+        let teamUrls = {};
+
+        // APP STATE
+        let currentUser = null;
+        let activePublicTab = "tarifas";
+        let activeModalModule = null;
+        let activeTeamModule = null;
+
+        // INITIALIZATION
+        window.onload = function() {
+            lucide.createIcons();
+            populateDeptFilter();
+            renderPublicTabs();
+            performSearch();
+            updateAuthUI();
+        };
+
+        // THEME SWITCHER LOGIC
+        function changeTheme(themeName) {
+            document.documentElement.setAttribute("data-theme", themeName);
+            showToast(`Tema cambiado a: ${themeName.toUpperCase()}`, "info");
+        }
+
+        // AUTHENTICATION LOGIC
+        function updateAuthUI() {
+            const container = document.getElementById("authContainer");
+            if (currentUser) {
+                container.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <button onclick="switchView('admin')" class="bg-white/20 hover:bg-white/30 text-white text-xs px-3 py-1.5 rounded-md font-semibold transition flex items-center gap-1.5 backdrop-blur-md">
+                            <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard Admin
+                        </button>
+                        <button onclick="logout()" class="bg-rose-600/80 hover:bg-rose-700 text-white text-xs px-3 py-1.5 rounded-md font-semibold transition flex items-center gap-1">
+                            <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Salir
+                        </button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button onclick="toggleLoginModal(true)" class="bg-[var(--accent-color)] hover:opacity-90 text-white text-sm font-semibold px-4 py-1.5 rounded-lg shadow transition flex items-center gap-2">
+                        <i data-lucide="key-round" class="w-4 h-4"></i> Ingresar
+                    </button>
+                `;
+            }
+            lucide.createIcons();
+        }
+
+        function toggleLoginModal(show) {
+            const modal = document.getElementById("loginModal");
+            if (show) modal.classList.remove("hidden");
+            else modal.classList.add("hidden");
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById("loginUser").value.trim();
+            const p = document.getElementById("loginPass").value.trim();
+
+            if (u === "admin" && p === "admin") {
+                currentUser = { name: "Administrador", role: "admin" };
+                showToast("¡Bienvenido al Dashboard del Dataset!", "success");
+                toggleLoginModal(false);
+                updateAuthUI();
+                switchView('admin');
+            } else {
+                showToast("Credenciales incorrectas (admin / admin)", "error");
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            updateAuthUI();
+            switchView('public');
+            showToast("Sesión cerrada", "info");
+        }
+
+        function switchView(view) {
+            const pub = document.getElementById("publicView");
+            const adm = document.getElementById("adminView");
+            const btn = document.getElementById("viewToggleBtn");
+
+            if (view === 'admin') {
+                if (!currentUser) {
+                    toggleLoginModal(true);
+                    return;
+                }
+                pub.classList.add("hidden");
+                adm.classList.remove("hidden");
+                btn.classList.remove("hidden");
+                renderAdminDashboardGrid();
+            } else {
+                adm.classList.add("hidden");
+                pub.classList.remove("hidden");
+                btn.classList.add("hidden");
+                performSearch();
+            }
+        }
+
+        // ==========================================
+        // PUBLIC VIEW SEARCH & CARACTERIZACIÓN
+        // ==========================================
+        function populateDeptFilter() {
+            const depts = new Set();
+            MODULES.forEach(m => {
+                (dataset[m.id] || []).forEach(item => {
+                    if (item.departamento) depts.add(item.departamento);
+                });
+            });
+
+            const sel = document.getElementById("filterDept");
+            sel.innerHTML = '<option value="">-- Todos los Departamentos --</option>';
+            Array.from(depts).sort().forEach(d => {
+                sel.innerHTML += `<option value="${d}">${d}</option>`;
+            });
+        }
+
+        function handleDeptChange() {
+            const selectedDept = document.getElementById("filterDept").value;
+            const munis = new Set();
+
+            MODULES.forEach(m => {
+                (dataset[m.id] || []).forEach(item => {
+                    if (!selectedDept || item.departamento === selectedDept) {
+                        if (item.municipio) munis.add(item.municipio);
+                    }
+                });
+            });
+
+            const selMuni = document.getElementById("filterMuni");
+            selMuni.innerHTML = '<option value="">-- Todos los Municipios --</option>';
+            Array.from(munis).sort().forEach(m => {
+                selMuni.innerHTML += `<option value="${m}">${m}</option>`;
+            });
+
+            performSearch();
+        }
+
+        function renderPublicTabs() {
+            const container = document.getElementById("publicModuleTabs");
+            container.innerHTML = MODULES.map(m => {
+                const count = (dataset[m.id] || []).length;
+                const isActive = m.id === activePublicTab;
+                return `
+                    <button onclick="changePublicTab('${m.id}')" class="whitespace-nowrap py-2.5 px-4 text-xs font-semibold rounded-t-lg transition flex items-center space-x-2 border-b-2 ${
+                        isActive 
+                        ? 'border-[var(--accent-color)] bg-[var(--bg-card)] text-[var(--accent-color)] shadow-sm' 
+                        : 'border-transparent text-[var(--text-muted)] hover:bg-[var(--bg-card)]'
+                    }">
+                        <span>${m.name}</span>
+                        <span class="px-1.5 py-0.5 rounded-full text-[10px] ${isActive ? 'bg-[var(--accent-color)] text-white' : 'bg-[var(--bg-main)] border border-[var(--border-color)]'}">${count}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function changePublicTab(tabId) {
+            activePublicTab = tabId;
+            renderPublicTabs();
+            performSearch();
+        }
+
+        function performSearch() {
+            const dept = document.getElementById("filterDept").value.toLowerCase();
+            const muni = document.getElementById("filterMuni").value;
+            const kw = document.getElementById("filterKeyword").value.toLowerCase();
+
+            // Total Global Badge
+            let grandTotal = 0;
+            MODULES.forEach(m => grandTotal += (dataset[m.id] || []).length);
+            document.getElementById("totalRecordsBadge").innerText = `${grandTotal} Registros Totales`;
+
+            // Municipal Characterization Display
+            const muniCard = document.getElementById("muniDetailsCard");
+            if (muni && MUNI_DETAILS[muni]) {
+                muniCard.classList.remove("hidden");
+                document.getElementById("muniCardName").innerText = muni;
+                document.getElementById("muniDane").innerText = MUNI_DETAILS[muni].dane;
+                document.getElementById("muniCat").innerText = MUNI_DETAILS[muni].cat;
+                document.getElementById("muniEstatuto").innerText = MUNI_DETAILS[muni].estatuto;
+            } else {
+                muniCard.classList.add("hidden");
+            }
+
+            // Filter Active Module Records
+            const records = dataset[activePublicTab] || [];
+            const filtered = records.filter(r => {
+                const matchDept = !dept || (r.departamento && r.departamento.toLowerCase().includes(dept));
+                const matchMuni = !muni || (r.municipio && r.municipio.toLowerCase().includes(muni.toLowerCase()));
+                let matchKw = true;
+                if (kw) {
+                    matchKw = Object.values(r).some(val => String(val).toLowerCase().includes(kw));
+                }
+                return matchDept && matchMuni && matchKw;
+            });
+
+            // Update Summaries
+            document.getElementById("selectedMuniTitle").innerText = muni ? `Resultados ICA: ${muni}` : `Consulta General del ICA`;
+            document.getElementById("searchSummary").innerText = `Viendo ${filtered.length} registro(s) en el módulo '${MODULES.find(m => m.id === activePublicTab).name}'`;
+
+            renderPublicCards(filtered);
+        }
+
+        function renderPublicCards(records) {
+            const container = document.getElementById("publicModuleContent");
+            if (records.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-[var(--text-muted)]">
+                        <i data-lucide="folder-search" class="w-12 h-12 mx-auto mb-2 opacity-40"></i>
+                        <p class="font-medium text-sm">No se encontraron registros para la combinación seleccionada.</p>
+                        <p class="text-xs">Prueba cambiar de municipio o seleccionar otro módulo temático arriba.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            let html = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">`;
+            records.forEach(r => {
+                html += `
+                    <div class="bg-[var(--bg-main)] border border-[var(--border-color)] hover:border-[var(--accent-color)] rounded-xl p-4 shadow-sm transition">
+                        <div class="flex items-center justify-between border-b border-[var(--border-color)] pb-2 mb-3">
+                            <span class="text-xs font-bold text-[var(--accent-color)] bg-[var(--bg-card)] px-2 py-0.5 rounded-md border border-[var(--border-color)]">
+                                ${r.municipio || 'Nacional'} ${r.departamento ? `(${r.departamento})` : ''}
+                            </span>
+                            <span class="text-[10px] opacity-60 font-mono">ID #${r.id || 1}</span>
+                        </div>
+                        <div class="space-y-2 text-xs">
+                `;
+
+                Object.keys(r).forEach(k => {
+                    if (['id', 'departamento', 'municipio'].includes(k)) return;
+                    const formattedKey = k.replace(/_/g, ' ').toUpperCase();
+                    html += `
+                        <div>
+                            <span class="font-semibold opacity-70 text-[10px] uppercase block">${formattedKey}</span>
+                            <span class="font-medium leading-relaxed">${r[k]}</span>
+                        </div>
+                    `;
+                });
+
+                html += `</div></div>`;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // ADMIN DASHBOARD REDISEÑADO (13 TARJETAS EQUIPOS)
+        // ==========================================
+        function renderAdminDashboardGrid() {
+            const grid = document.getElementById("adminGridModules");
+            grid.innerHTML = MODULES.map(m => {
+                const count = (dataset[m.id] || []).length;
+                const hasUrl = !!teamUrls[m.id];
+                return `
+                    <div class="bg-[var(--bg-card)] border border-[var(--border-color)] hover:shadow-lg rounded-2xl p-5 flex flex-col justify-between transition group">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-[10px] font-bold uppercase tracking-wider bg-[var(--accent-color)]/10 text-[var(--accent-color)] px-2.5 py-1 rounded-full border border-[var(--accent-color)]/20">
+                                    Módulo ${m.id}
+                                </span>
+                                <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-[var(--bg-main)] border border-[var(--border-color)]">
+                                    ${count} regs
+                                </span>
+                            </div>
+
+                            <h3 class="font-bold text-lg mb-1 group-hover:text-[var(--accent-color)] transition">${m.name}</h3>
+                            <p class="text-xs text-[var(--text-muted)] leading-relaxed mb-4">${m.desc}</p>
+                        </div>
+
+                        <div class="space-y-2 pt-3 border-t border-[var(--border-color)]">
+                            <!-- BOTÓN 1: IR A LA VERSIÓN DEL EQUIPO -->
+                            <button onclick="openTeamVersion('${m.id}')" class="w-full bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] text-white text-xs font-semibold py-2 px-3 rounded-lg shadow-sm flex items-center justify-center gap-2 transition">
+                                <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                                <span>Ver Implementación del Equipo</span>
+                                ${hasUrl ? '<span class="w-2 h-2 rounded-full bg-emerald-300"></span>' : ''}
+                            </button>
+
+                            <!-- BOTÓN 2: CARGAR/EXPORTAR DATOS DE ESTE MÓDULO -->
+                            <button onclick="openModuleDataModal('${m.id}')" class="w-full bg-[var(--bg-main)] hover:bg-[var(--border-color)] text-[var(--text-main)] text-xs font-semibold py-2 px-3 rounded-lg border border-[var(--border-color)] flex items-center justify-center gap-2 transition">
+                                <i data-lucide="upload-cloud" class="w-4 h-4 text-[var(--accent-color)]"></i>
+                                <span>Cargar JSON / CSV / Texto Plano</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // TEAM IMPLEMENTATION MODAL LOGIC
+        // ==========================================
+        function openTeamVersion(modId) {
+            activeTeamModule = modId;
+            const m = MODULES.find(x => x.id === modId);
+            document.getElementById("teamModalTitle").innerText = `Implementación Equipo: ${m.name}`;
+            
+            const savedUrl = teamUrls[modId] || "";
+            document.getElementById("teamUrlInput").value = savedUrl;
+
+            if (savedUrl) {
+                renderTeamIframe(savedUrl);
+            } else {
+                resetTeamFrame();
+            }
+
+            document.getElementById("teamVersionModal").classList.remove("hidden");
+        }
+
+        function closeTeamVersionModal() {
+            document.getElementById("teamVersionModal").classList.add("hidden");
+        }
+
+        function saveTeamUrl() {
+            const url = document.getElementById("teamUrlInput").value.trim();
+            if (url) {
+                teamUrls[activeTeamModule] = url;
+                showToast("URL del equipo guardada con éxito", "success");
+                renderTeamIframe(url);
+                renderAdminDashboardGrid();
+            } else {
+                delete teamUrls[activeTeamModule];
+                resetTeamFrame();
+                showToast("URL eliminada", "info");
+            }
+        }
+
+        function renderTeamIframe(url) {
+            const container = document.getElementById("teamFrameContainer");
+            container.innerHTML = `
+                <iframe src="${url}" class="w-full h-full rounded-lg border-0" title="Equipo Module Version" onerror="showToast('Error cargando iframe', 'error')"></iframe>
+            `;
+        }
+
+        function resetTeamFrame() {
+            const container = document.getElementById("teamFrameContainer");
+            container.innerHTML = `
+                <div class="max-w-md space-y-3">
+                    <div class="w-16 h-16 bg-[var(--accent-color)]/10 text-[var(--accent-color)] rounded-full flex items-center justify-center mx-auto">
+                        <i data-lucide="layers" class="w-8 h-8"></i>
+                    </div>
+                    <h4 class="font-bold text-base">Entorno Autónomo del Equipo</h4>
+                    <p class="text-xs text-[var(--text-muted)]">No hay URL configurada para esta versión del equipo. Ingrese una URL arriba o simule la vista.</p>
+                    <div class="pt-2 flex justify-center gap-2">
+                        <button onclick="simulateTeamApp()" class="bg-[var(--accent-color)] text-white text-xs px-4 py-2 rounded-lg font-medium">
+                            Simular Vista del Equipo
+                        </button>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function simulateTeamApp() {
+            const m = MODULES.find(x => x.id === activeTeamModule);
+            const container = document.getElementById("teamFrameContainer");
+            const records = dataset[activeTeamModule] || [];
+
+            container.innerHTML = `
+                <div class="w-full text-left space-y-4">
+                    <div class="bg-[var(--accent-color)]/10 p-4 rounded-xl border border-[var(--accent-color)]/20 flex justify-between items-center">
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-[var(--accent-color)]">Simulación Activa</span>
+                            <h5 class="font-bold text-sm">Vista Personalizada del Equipo: ${m.name}</h5>
+                        </div>
+                        <span class="bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded font-bold">Estado: Operativo</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div class="bg-[var(--bg-main)] p-3 rounded-lg border border-[var(--border-color)]">
+                            <span class="font-bold block">Registros del Dataset:</span>
+                            <span>${records.length} datos disponibles</span>
+                        </div>
+                        <div class="bg-[var(--bg-main)] p-3 rounded-lg border border-[var(--border-color)]">
+                            <span class="font-bold block">Formato Exportable:</span>
+                            <span>Texto Plano | CSV | JSON</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function openExternalTeamUrl() {
+            const url = teamUrls[activeTeamModule];
+            if (url) {
+                window.open(url, '_blank');
+            } else {
+                showToast("Por favor configure primero una URL para este equipo", "error");
+            }
+        }
+
+        // ==========================================
+        // MODULE DATA & FILE MANAGEMENT MODAL
+        // ==========================================
+        function openModuleDataModal(modId) {
+            activeModalModule = modId;
+            const m = MODULES.find(x => x.id === modId);
+            document.getElementById("moduleDataTitle").innerText = m.name;
+            document.getElementById("moduleDataSub").innerText = `Carga y Estandarización de Datos (${m.id})`;
+            
+            renderModalTable();
+            document.getElementById("moduleDataModal").classList.remove("hidden");
+        }
+
+        function closeModuleDataModal() {
+            document.getElementById("moduleDataModal").classList.add("hidden");
+        }
+
+        function renderModalTable() {
+            const records = dataset[activeModalModule] || [];
+            document.getElementById("modalRecordCount").innerText = records.length;
+
+            const headerRow = document.getElementById("modalTableHeader");
+            const bodyRow = document.getElementById("modalTableBody");
+
+            if (records.length === 0) {
+                headerRow.innerHTML = `<th class="p-3">Estado</th>`;
+                bodyRow.innerHTML = `<tr><td class="p-4 text-center text-[var(--text-muted)]">Sin datos cargados. Arrastra un archivo JSON/CSV arriba.</td></tr>`;
+                return;
+            }
+
+            const keys = Object.keys(records[0]);
+            headerRow.innerHTML = keys.map(k => `<th class="p-3 font-semibold">${k.replace(/_/g, ' ')}</th>`).join('') + `<th class="p-3 text-right">Acciones</th>`;
+
+            bodyRow.innerHTML = records.map((r, idx) => {
+                return `
+                    <tr class="hover:bg-[var(--bg-main)] transition">
+                        ${keys.map(k => `<td class="p-3 font-medium">${r[k] !== undefined ? r[k] : ''}</td>`).join('')}
+                        <td class="p-3 text-right">
+                            <button onclick="deleteModalRecord(${r.id || idx})" class="text-rose-500 hover:text-rose-700 p-1 rounded transition">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function deleteModalRecord(id) {
+            dataset[activeModalModule] = dataset[activeModalModule].filter(r => r.id !== id);
+            renderModalTable();
+            renderAdminDashboardGrid();
+            renderPublicTabs();
+            showToast("Registro eliminado", "info");
+        }
+
+        function handleModalFileSelect(evt) {
+            const file = evt.target.files[0];
+            if (!file) return;
+
+            const filename = file.name.toLowerCase();
+            const reader = new FileReader();
+
+            if (filename.endsWith('.json')) {
+                reader.onload = function(e) {
+                    try {
+                        const json = JSON.parse(e.target.result);
+                        dataset[activeModalModule] = Array.isArray(json) ? json : [json];
+                        showToast(`Carga JSON exitosa (${dataset[activeModalModule].length} registros)`, "success");
+                        renderModalTable();
+                        renderAdminDashboardGrid();
+                        renderPublicTabs();
+                    } catch (err) {
+                        showToast("Error en formato JSON", "error");
+                    }
+                };
+                reader.readAsText(file);
+            } else if (filename.endsWith('.csv')) {
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        if (results.data && results.data.length > 0) {
+                            dataset[activeModalModule] = results.data;
+                            showToast(`Carga CSV exitosa (${results.data.length} registros)`, "success");
+                            renderModalTable();
+                            renderAdminDashboardGrid();
+                            renderPublicTabs();
+                        }
+                    }
+                });
+            }
+            evt.target.value = '';
+        }
+
+        // TEXTO PLANO (|) / CSV / JSON EXPORT
+        function exportPlainFormat(type) {
+            const records = dataset[activeModalModule] || [];
+            if (records.length === 0) {
+                showToast("No hay datos para exportar", "error");
+                return;
+            }
+
+            let content = "";
+            let filename = `${activeModalModule}_export.${type === 'pipe' ? 'txt' : type}`;
+            let mime = "text/plain";
+
+            if (type === 'json') {
+                content = JSON.stringify(records, null, 2);
+                mime = "application/json";
+            } else if (type === 'csv') {
+                content = Papa.unparse(records);
+                mime = "text/csv";
+            } else if (type === 'pipe') {
+                // Formato Texto Plano Separado por Tuberías (Pipeline |) para Contaduría
+                const keys = Object.keys(records[0]);
+                const header = keys.join('|');
+                const rows = records.map(r => keys.map(k => r[k] !== undefined ? String(r[k]).replace(/\|/g, '-') : '').join('|'));
+                content = [header, ...rows].join('\n');
+            }
+
+            triggerDownload(content, filename, mime);
+            showToast(`Exportación en ${type.toUpperCase()} generada exitosamente`, "success");
+        }
+
+        function downloadModuleTemplate(type) {
+            const records = dataset[activeModalModule] || [];
+            const sample = records.length > 0 ? [records[0]] : [{ departamento: "Santander", municipio: "Bucaramanga", concepto: "Ejemplo" }];
+            
+            let content = type === 'json' ? JSON.stringify(sample, null, 2) : Papa.unparse(sample);
+            triggerDownload(content, `plantilla_${activeModalModule}.${type}`, type === 'json' ? 'application/json' : 'text/csv');
+        }
+
+        function triggerDownload(content, filename, mime) {
+            const blob = new Blob([content], { type: mime + ";charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+
+        // MANUAL ADD LOGIC
+        function openAddRecordModal() {
+            const modal = document.getElementById("addRecordModal");
+            const form = document.getElementById("addRecordForm");
+            const records = dataset[activeModalModule] || [];
+            
+            let keys = ["departamento", "municipio"];
+            if (records.length > 0) {
+                keys = Object.keys(records[0]).filter(k => k !== 'id');
+            }
+
+            form.innerHTML = keys.map(k => `
+                <div>
+                    <label class="block font-semibold uppercase text-[10px] mb-1 text-[var(--text-muted)]">${k.replace(/_/g, ' ')}</label>
+                    <input type="text" name="${k}" required class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] text-[var(--text-main)] rounded-lg p-2">
+                </div>
+            `).join('') + `
+                <div class="pt-3">
+                    <button type="submit" class="w-full bg-[var(--accent-color)] text-white font-semibold py-2 rounded-lg transition">
+                        Guardar Registro
+                    </button>
+                </div>
+            `;
+
+            modal.classList.remove("hidden");
+        }
+
+        function closeAddRecordModal() {
+            document.getElementById("addRecordModal").classList.add("hidden");
+        }
+
+        function saveManualRecord(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const newObj = { id: Date.now() };
+
+            formData.forEach((val, key) => { newObj[key] = val; });
+
+            if (!dataset[activeModalModule]) dataset[activeModalModule] = [];
+            dataset[activeModalModule].push(newObj);
+
+            showToast("Registro agregado manualmente", "success");
+            closeAddRecordModal();
+            renderModalTable();
+            renderAdminDashboardGrid();
+            renderPublicTabs();
+        }
+
+        // TOAST NOTIFICATIONS
+        function showToast(msg, type = "info") {
+            const container = document.getElementById("toastContainer");
+            const toast = document.createElement("div");
+            
+            const bg = type === 'success' ? 'bg-emerald-700 text-white' : type === 'error' ? 'bg-rose-700 text-white' : 'bg-slate-800 text-white';
+            
+            toast.className = `${bg} px-4 py-3 rounded-xl shadow-xl text-xs font-semibold flex items-center space-x-2 transition-all duration-300 pointer-events-auto opacity-0 transform translate-y-2`;
+            toast.innerText = msg;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove("translate-y-2", "opacity-0"), 10);
+
+            setTimeout(() => {
+                toast.classList.add("opacity-0");
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

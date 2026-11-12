@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dataset ICA Colombia - Plataforma de Lecciones Aprendidas y Consulta Municipal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- PapaParse for robust CSV Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- HEADER / NAVBAR -->
+    <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchView('public')">
+                <div class="p-2 bg-indigo-700 rounded-lg">
+                    <i data-lucide="building-2" class="w-6 h-6 text-indigo-200"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">Dataset ICA Colombia</h1>
+                    <p class="text-xs text-indigo-300">Impuesto de Industria y Comercio Municipal</p>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="flex items-center space-x-3">
+                <button id="viewToggleBtn" onclick="switchView('public')" class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-medium text-indigo-100 hover:bg-indigo-800 transition">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                    <span>Consulta Pública</span>
+                </button>
+
+                <div id="authContainer">
+                    <!-- Dynamic Auth Button rendered via JS -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- NOTIFICATION TOAST CONTAINER -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-grow">
+        
+        <!-- ========================================== -->
+        <!-- PUBLIC VIEW: INDEX & SEARCH CONSULTATION -->
+        <!-- ========================================== -->
+        <section id="publicView" class="block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- Hero / Explanation Section -->
+            <div class="bg-gradient-to-br from-indigo-800 via-indigo-700 to-slate-900 rounded-2xl text-white p-6 md:p-10 shadow-xl mb-10 relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
+                    <i data-lucide="landmark" class="w-96 h-96"></i>
+                </div>
+                <div class="relative z-10 max-w-4xl">
+                    <div class="inline-flex items-center space-x-2 bg-indigo-600/50 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider text-indigo-200 mb-4 border border-indigo-400/30">
+                        <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+                        <span>Marco Tributario Municipal</span>
+                    </div>
+                    <h2 class="text-2xl sm:text-4xl font-extrabold tracking-tight mb-4">
+                        ¿Qué es e Importancia del Impuesto de Industria y Comercio (ICA) en Colombia?
+                    </h2>
+                    <p class="text-indigo-100 text-sm sm:text-base leading-relaxed mb-6">
+                        El <strong>Impuesto de Industria y Comercio (ICA)</strong> es un gravamen de carácter local y obligatorio en Colombia que recae sobre la realización de cualquier actividad industrial, comercial o de servicios que se ejerza o realice en las jurisdicciones municipales, ya sea de forma permanente u ocasional, con o sin establecimiento de comercio.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-indigo-500/30 text-xs sm:text-sm">
+                        <div class="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10">
+                            <h3 class="font-bold text-white mb-1 flex items-center gap-2">
+                                <i data-lucide="coins" class="w-4 h-4 text-emerald-400"></i> Financiación Territorial
+                            </h3>
+                            <p class="text-indigo-200 text-xs">Principal fuente de ingresos propios municipales para financiar salud, educación e infraestructura social.</p>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10">
+                            <h3 class="font-bold text-white mb-1 flex items-center gap-2">
+                                <i data-lucide="git-fork" class="w-4 h-4 text-amber-400"></i> Descentralización Fiscal
+                            </h3>
+                            <p class="text-indigo-200 text-xs">Cada municipio adopta mediante Acuerdo Municipal sus propias tarifas, calendarios y exoneraciones dentro de los topes de ley.</p>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/10">
+                            <h3 class="font-bold text-white mb-1 flex items-center gap-2">
+                                <i data-lucide="scale" class="w-4 h-4 text-cyan-400"></i> Marco Legal (Ley 14/83)
+                            </h3>
+                            <p class="text-indigo-200 text-xs">Regulado por la Ley 14 de 1983, el Decreto Ley 1333 de 1986 y modificado por las leyes 1819 de 2016 y 2010 de 2019.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search and Filter Panel -->
+            <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 mb-8">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                    <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                        <i data-lucide="filter" class="w-5 h-5 text-indigo-600"></i>
+                        Buscador y Caracterización de Datos Municipales
+                    </h3>
+                    <span id="totalRecordsBadge" class="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2.5 py-1 rounded-full border border-indigo-200">
+                        Cargando registros...
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Departamento</label>
+                        <select id="filterDept" onchange="handleDeptChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-2.5">
+                            <option value="">-- Todos los Departamentos --</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Municipio</label>
+                        <select id="filterMuni" onchange="performSearch()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-2.5">
+                            <option value="">-- Todos los Municipios --</option>
+                        </select>
+                    </div>
+
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Búsqueda General / CIIU / Término</label>
+                        <div class="relative">
+                            <input type="text" id="filterKeyword" oninput="performSearch()" placeholder="Buscar por actividad, tarifa, ley, código CIIU o concepto..." class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-2.5 pl-10">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3.5"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section with Module Tabs -->
+            <div id="resultsWrapper" class="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
+                <div class="bg-slate-100 px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h4 class="font-bold text-slate-800" id="selectedMuniTitle">Resultados Consolidados del ICA</h4>
+                        <p class="text-xs text-slate-500" id="searchSummary">Selecciona un municipio o explora los módulos abajo.</p>
+                    </div>
+                    <div id="muniBadge" class="hidden">
+                        <span class="bg-indigo-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm">
+                            Municipio Seleccionado
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Horizontal Scroll Module Selector Tabs -->
+                <div class="border-b border-slate-200 bg-slate-50/50 px-4 pt-2 overflow-x-auto custom-scrollbar flex space-x-1" id="publicModuleTabs">
+                    <!-- Populated Dynamically -->
+                </div>
+
+                <!-- Module Details View Container -->
+                <div class="p-6" id="publicModuleContent">
+                    <!-- Dynamic query content -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- ADMIN DASHBOARD VIEW (AUTHENTICATED) -->
+        <!-- ========================================== -->
+        <section id="adminView" class="hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex flex-col md:flex-row gap-6">
+                
+                <!-- Admin Sidebar Navigation (13 Modules) -->
+                <aside class="w-full md:w-72 bg-white rounded-2xl shadow-md border border-slate-200 p-4 shrink-0">
+                    <div class="flex items-center space-x-3 p-3 bg-indigo-50 rounded-xl mb-4 border border-indigo-100">
+                        <div class="p-2 bg-indigo-600 text-white rounded-lg">
+                            <i data-lucide="database" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800">Dataset Admin</h3>
+                            <p class="text-xs text-slate-500">Gestión de 13 Pestañas</p>
+                        </div>
+                    </div>
+
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">Módulos del Dataset</div>
+                    <nav class="space-y-1 custom-scrollbar max-h-[70vh] overflow-y-auto pr-1" id="adminModuleList">
+                        <!-- Populated by JS -->
+                    </nav>
+                </aside>
+
+                <!-- Admin Main Content Workspace -->
+                <div class="flex-grow bg-white rounded-2xl shadow-md border border-slate-200 p-6">
+                    
+                    <!-- Top Workspace Bar -->
+                    <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200 mb-6">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-0.5 rounded-full" id="adminCurrentModuleId">Pestaña</span>
+                                <h2 class="text-xl font-bold text-slate-800" id="adminCurrentModuleName">Nombre Módulo</h2>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1" id="adminCurrentModuleDesc">Carga y gestión de datos vía JSON o CSV.</p>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <button onclick="exportCurrentModule('json')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 flex items-center gap-1.5 transition">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i> JSON
+                            </button>
+                            <button onclick="exportCurrentModule('csv')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 flex items-center gap-1.5 transition">
+                                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> CSV
+                            </button>
+                            <button onclick="openAddRecordModal()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm flex items-center gap-1.5 transition">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Nuevo Registro
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- File Import Area (JSON & CSV) -->
+                    <div class="bg-slate-50 border-2 border-dashed border-indigo-200 hover:border-indigo-400 rounded-xl p-6 text-center mb-8 transition relative group">
+                        <input type="file" id="fileInput" accept=".json, .csv" onchange="handleFileSelect(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                        <div class="flex flex-col items-center justify-center space-y-2 pointer-events-none">
+                            <div class="p-3 bg-white text-indigo-600 rounded-full shadow-sm group-hover:scale-110 transition">
+                                <i data-lucide="upload-cloud" class="w-8 h-8"></i>
+                            </div>
+                            <p class="text-sm font-semibold text-slate-700">Arrastra o selecciona un archivo <span class="text-indigo-600 font-bold">.JSON</span> o <span class="text-indigo-600 font-bold">.CSV</span></p>
+                            <p class="text-xs text-slate-500">Carga masiva de datos para esta pestaña especifica del dataset municipal</p>
+                            
+                            <div class="pt-2 flex items-center space-x-2 pointer-events-auto">
+                                <button onclick="downloadSampleTemplate('json')" class="text-xs text-indigo-600 hover:underline flex items-center gap-1">
+                                    <i data-lucide="file-code" class="w-3 h-3"></i> Plantilla JSON
+                                </button>
+                                <span class="text-slate-300">•</span>
+                                <button onclick="downloadSampleTemplate('csv')" class="text-xs text-indigo-600 hover:underline flex items-center gap-1">
+                                    <i data-lucide="file-spreadsheet" class="w-3 h-3"></i> Plantilla CSV
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Table Preview & Data Records -->
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-slate-700 text-sm">Registros Cargados (<span id="adminRecordCount">0</span>)</h3>
+                        <div class="relative w-64">
+                            <input type="text" id="adminTableSearch" oninput="renderAdminTable()" placeholder="Filtrar registros..." class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-lg p-2 pl-8 focus:ring-1 focus:ring-indigo-500">
+                            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-xl overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left text-xs text-slate-600" id="adminDataTable">
+                            <thead class="bg-slate-100 text-slate-700 uppercase font-semibold border-b border-slate-200">
+                                <tr id="adminTableHeader">
+                                    <!-- Dynamic headers -->
+                                </tr>
+                            </thead>
+                            <tbody id="adminTableBody" class="divide-y divide-slate-200">
+                                <!-- Dynamic records -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-900 text-slate-400 text-xs py-6 border-t border-slate-800 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center space-y-2">
+            <p>Dataset de Lecciones Aprendidas - Impuesto de Industria y Comercio (ICA) Colombia</p>
+            <p class="text-slate-500">Estandarización tributaria para entidades públicas, universidades y contribuyentes.</p>
+        </div>
+    </footer>
+
+    <!-- MODAL: AUTHENTICATION (LOGIN) -->
+    <div id="loginModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-100 relative">
+            <button onclick="toggleLoginModal(false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div class="text-center mb-6">
+                <div class="w-12 h-12 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="lock" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800">Ingreso Administrativo</h3>
+                <p class="text-xs text-slate-500 mt-1">Acceso para la carga y gestión de datasets municipales</p>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Usuario</label>
+                    <input type="text" id="loginUser" required placeholder="admin" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Contraseña</label>
+                    <input type="password" id="loginPass" required placeholder="••••••••" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-xs text-indigo-800">
+                    <p class="font-semibold mb-0.5">Credenciales de Acceso:</p>
+                    <p>Usuario: <code class="font-bold">admin</code> | Contraseña: <code class="font-bold">admin</code></p>
+                </div>
+
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg shadow-md transition flex items-center justify-center gap-2">
+                    <i data-lucide="log-in" class="w-4 h-4"></i> Iniciar Sesión
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD MANUAL RECORD -->
+    <div id="addRecordModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-100 relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeAddRecordModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <h3 class="text-lg font-bold text-slate-800 mb-1" id="addRecordTitle">Agregar Registro Manuel</h3>
+            <p class="text-xs text-slate-500 mb-4">Complete los campos requeridos para este módulo.</p>
+
+            <form id="addRecordForm" onsubmit="saveManualRecord(event)" class="space-y-3 text-xs">
+                <!-- Fields rendered dynamically -->
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- JAVASCRIPT APP LOGIC -->
+    <!-- ========================================== -->
+    <script>
+        // DATASETS & APP STATE DEFINITIONS
+        const MODULES = [
+            { id: "principios", name: "Principios", desc: "Principios rectores del ICA (Legalidad, Equidad, Territorialidad, Eficiencia)." },
+            { id: "elementos", name: "Elementos del Tributo", desc: "Sujeto Activo, Sujeto Pasivo, Hecho Generador, Base Gravable y Tarifa." },
+            { id: "actividades_no_sujetas", name: "Actividades No Sujetas", desc: "Actividades excluidas del impuesto por ley (Art 39 Ley 14/83)." },
+            { id: "deducciones_exclusiones", name: "Deducciones y Exclusiones", desc: "Devoluciones, exportaciones, venta de activos fijos, ingresos no operacionales." },
+            { id: "exenciones_incentivos", name: "Exenciones e Incentivos", desc: "Incentivos por creación de empleo, zonas francas, exenciones temporales." },
+            { id: "tarifas", name: "Tarifas", desc: "Tarifas por mil (‰) según código CIIU e actividad comercial/servicios/industrial." },
+            { id: "economia_digital", name: "Economía Digital", desc: "Tributación de plataformas digitales, comercio electrónico y servicios remotos." },
+            { id: "territorialidad", name: "Territorialidad", desc: "Reglas de presencia económica y sitio de ejecución de la actividad comercial." },
+            { id: "s_financiero", name: "S. Financiero", desc: "Bases gravables especiales e ingreso por intereses/comisiones del sector financiero." },
+            { id: "rst", name: "RST", desc: "Régimen Simple de Tributación y consolidación de tarifa unificada nacional." },
+            { id: "regimen_preferencial", name: "Régimen Preferencial", desc: "Simplificado o preferencial municipal y topes de ingresos UVT." },
+            { id: "avisos_tableros", name: "Avisos y Tableros", desc: "Impuesto complementario de avisos y tableros (15% sobre la base del ICA)." },
+            { id: "sobretasa_bomberil", name: "Sobretasa Bomberil", desc: "Recargo de financiación para cuerpos de bomberos locales." }
+        ];
+
+        // MOCK DATABASE INITIALIZATION
+        let dataset = {
+            principios: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", principio: "Territorialidad", concepto: "Criterio de presencia comercial directa", acuerdo: "Acuerdo 026 de 2018", leccion_aprendida: "Se requiere cruce permanente con facturación electrónica DIAN." },
+                { id: 2, departamento: "Bogotá D.C.", municipio: "Bogotá D.C.", principio: "Legalidad", concepto: "Fijación de tarifas únicamente por el Concejo Distrital", acuerdo: "Decreto Ley 1421 de 1993", leccion_aprendida: "Evita demandas de nulidad por cobros no estipulados en acuerdo." }
+            ],
+            elementos: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", sujeto_activo: "Municipio de Bucaramanga", sujeto_pasivo: "Persona Natural o Jurídica ejecutora de actividad", hecho_generador: "Ejercicio de actividad industrial, comercial o servicios", base_gravable: "Ingresos brutos del año gravable menos deducciones" },
+                { id: 2, departamento: "Antioquia", municipio: "Medellín", sujeto_activo: "Distrito de Medellín", sujeto_pasivo: "Contribuyentes en jurisdicción distrital", hecho_generador: "Realización de actividades lucrativas directas o indirectas", base_gravable: "Totalidad de ingresos ordinarios y extraordinarios" }
+            ],
+            actividades_no_sujetas: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", articulo_ley: "Art 39 Ley 14/1983", descripcion: "Producción primaria agrícola, ganadera y avícola sin transformación industrial", observaciones: "La venta directa en finca no causa el impuesto." },
+                { id: 2, departamento: "Valle del Cauca", municipio: "Cali", articulo_ley: "Art 39 Ley 14/1983", descripcion: "Edición y venta de libros, revistas y publicaciones periódicas", observaciones: "Aplica exención nacional Ley de Libro." }
+            ],
+            deducciones_exclusiones: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", concepto: "Venta de activos fijos", soportes_requeridos: "Declaración de Renta y Libro de Activos", porcentaje_deducible: 100 },
+                { id: 2, departamento: "Santander", municipio: "Girón", concepto: "Devoluciones y rebajas en ventas", soportes_requeridos: "Notas crédito contables debidamente reglamentadas", porcentaje_deducible: 100 }
+            ],
+            exenciones_incentivos: [
+                { id: 1, departamento: "Santander", municipio: "Floridablanca", incentivo: "Exención por generación de empleo joven", vigencia: "5 años", beneficio_porcentaje: 50, requisito: "Aumento del 20% en nómina menor de 28 años" },
+                { id: 2, departamento: "Antioquia", municipio: "Medellín", incentivo: "Empresas en Zona de Innovación (Ruta N)", vigencia: "3 años", beneficio_porcentaje: 100, requisito: "Certificación de empresa de base tecnológica" }
+            ],
+            tarifas: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", ciiu: "4711", actividad: "Comercio al por menor en establecimientos no especializados", tarifa_por_mil: 5.0, periodicidad: "Bimestral" },
+                { id: 2, departamento: "Santander", municipio: "Bucaramanga", ciiu: "6201", actividad: "Desarrollo de sistemas informáticos y software", tarifa_por_mil: 7.0, periodicidad: "Bimestral" },
+                { id: 3, departamento: "Bogotá D.C.", municipio: "Bogotá D.C.", ciiu: "6201", actividad: "Desarrollo de software y consultoría TIC", tarifa_por_mil: 9.66, periodicidad: "Bimestral" },
+                { id: 4, departamento: "Antioquia", municipio: "Medellín", ciiu: "1011", actividad: "Procesamiento y conservación de carne", tarifa_por_mil: 4.0, periodicidad: "Anual / Bimestral" }
+            ],
+            economia_digital: [
+                { id: 1, departamento: "Bogotá D.C.", municipio: "Bogotá D.C.", regla: "Presencia económica significativa por apps", retencion_aplicable: "Retención vía pasarela de pago", acuerdo_num: "Acuerdo 780 de 2020" },
+                { id: 2, departamento: "Santander", municipio: "Bucaramanga", regla: "Servicios prestados desde otra ciudad por internet", retencion_aplicable: "Retención en la fuente por comprador local", acuerdo_num: "Acuerdo 026 de 2018" }
+            ],
+            territorialidad: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", regla_servicio: "Lugar donde se ejecuta físicamente la prestación del servicio", regla_comercio: "Lugar donde se perfecciona la venta / despacho de mercancía" },
+                { id: 2, departamento: "Valle del Cauca", municipio: "Cali", regla_servicio: "Sede de contratación principal salvo obra física", regla_comercio: "Establecimiento abierto al público" }
+            ],
+            s_financiero: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", entidad: "Bancos y Entidades de Crédito", base_gravable_especial: "Intereses, comisiones, arrendamientos y rendimientos", tarifa_aplicable: 5.0 },
+                { id: 2, departamento: "Bogotá D.C.", municipio: "Bogotá D.C.", entidad: "Aseguradoras y Reaseguradoras", base_gravable_especial: "Primas emitidas menos siniestros pagados", tarifa_aplicable: 11.04 }
+            ],
+            rst: [
+                { id: 1, departamento: "Nacional", municipio: "Todos", ley_marco: "Art 903 ET - Ley 2010 de 2019", mecanismo: "Consolidación en formulario 260 DIAN", transferencia_municipal: "Transferencia automática del Ministerio de Hacienda" }
+            ],
+            regimen_preferencial: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", tope_ingresos_uvt: 3500, requisito_establecimientos: 1, pago_fijo: "Pago anual consolidado fijado por rango" },
+                { id: 2, departamento: "Antioquia", municipio: "Medellín", tope_ingresos_uvt: 3500, requisito_establecimientos: 1, pago_fijo: "Categorización según UVT con tarifa simplificada" }
+            ],
+            avisos_tableros: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", tarifa_porcentaje: 15.0, hecho_generador: "Colocación de vallas, avisos, tableros y emblemas en espacio público o visible" },
+                { id: 2, departamento: "Bogotá D.C.", municipio: "Bogotá D.C.", tarifa_porcentaje: 15.0, hecho_generador: "Exhibición de marcas y avisos comerciales" }
+            ],
+            sobretasa_bomberil: [
+                { id: 1, departamento: "Santander", municipio: "Bucaramanga", base_calculo: "Sobre el valor del impuesto de Industria y Comercio liquidado", tarifa_porcentaje: 5.0, destinacion: "Cuerpo Oficial de Bomberos de Bucaramanga" },
+                { id: 2, departamento: "Santander", municipio: "Girón", base_calculo: "Sobre la liquidación privada del ICA", tarifa_porcentaje: 4.0, destinacion: "Convenio Bomberos Voluntarios" }
+            ]
+        };
+
+        // CURRENT USER SESSION
+        let currentUser = null;
+        let activePublicTab = "tarifas";
+        let activeAdminModule = "principios";
+
+        // INITIALIZATION ON LOAD
+        window.onload = function() {
+            lucide.createIcons();
+            populateDeptFilter();
+            renderPublicTabs();
+            performSearch();
+            renderAdminSidebar();
+            updateAuthUI();
+        };
+
+        // ==========================================
+        // AUTHENTICATION LOGIC
+        // ==========================================
+        function updateAuthUI() {
+            const container = document.getElementById("authContainer");
+            if (currentUser) {
+                container.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <button onclick="switchView('admin')" class="bg-indigo-700 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-md font-semibold transition flex items-center gap-1.5">
+                            <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Panel Admin
+                        </button>
+                        <button onclick="logout()" class="bg-slate-800 hover:bg-slate-700 text-rose-300 text-xs px-3 py-1.5 rounded-md font-semibold transition flex items-center gap-1">
+                            <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Salir
+                        </button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button onclick="toggleLoginModal(true)" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-1.5 rounded-lg shadow transition flex items-center gap-2">
+                        <i data-lucide="key-round" class="w-4 h-4"></i> Ingresar
+                    </button>
+                `;
+            }
+            lucide.createIcons();
+        }
+
+        function toggleLoginModal(show) {
+            const modal = document.getElementById("loginModal");
+            if (show) modal.classList.remove("hidden");
+            else modal.classList.add("hidden");
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById("loginUser").value.trim();
+            const p = document.getElementById("loginPass").value.trim();
+
+            if (u === "admin" && p === "admin") {
+                currentUser = { name: "Administrador", role: "admin" };
+                showToast("¡Bienvenido al Panel de Administración!", "success");
+                toggleLoginModal(false);
+                updateAuthUI();
+                switchView('admin');
+            } else {
+                showToast("Credenciales incorrectas (admin / admin)", "error");
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            updateAuthUI();
+            switchView('public');
+            showToast("Sesión cerrada correctamente", "info");
+        }
+
+        function switchView(view) {
+            const pub = document.getElementById("publicView");
+            const adm = document.getElementById("adminView");
+            const btn = document.getElementById("viewToggleBtn");
+
+            if (view === 'admin') {
+                if (!currentUser) {
+                    toggleLoginModal(true);
+                    return;
+                }
+                pub.classList.add("hidden");
+                adm.classList.remove("hidden");
+                btn.classList.remove("hidden");
+                renderAdminWorkspace();
+            } else {
+                adm.classList.add("hidden");
+                pub.classList.remove("hidden");
+                btn.classList.add("hidden");
+                performSearch();
+            }
+        }
+
+        // ==========================================
+        // PUBLIC VIEW & SEARCH LOGIC
+        // ==========================================
+        function populateDeptFilter() {
+            const depts = new Set();
+            MODULES.forEach(m => {
+                (dataset[m.id] || []).forEach(item => {
+                    if (item.departamento) depts.add(item.departamento);
+                });
+            });
+
+            const sel = document.getElementById("filterDept");
+            sel.innerHTML = '<option value="">-- Todos los Departamentos --</option>';
+            Array.from(depts).sort().forEach(d => {
+                sel.innerHTML += `<option value="${d}">${d}</option>`;
+            });
+        }
+
+        function handleDeptChange() {
+            const selectedDept = document.getElementById("filterDept").value;
+            const munis = new Set();
+
+            MODULES.forEach(m => {
+                (dataset[m.id] || []).forEach(item => {
+                    if (!selectedDept || item.departamento === selectedDept) {
+                        if (item.municipio) munis.add(item.municipio);
+                    }
+                });
+            });
+
+            const selMuni = document.getElementById("filterMuni");
+            selMuni.innerHTML = '<option value="">-- Todos los Municipios --</option>';
+            Array.from(munis).sort().forEach(m => {
+                selMuni.innerHTML += `<option value="${m}">${m}</option>`;
+            });
+
+            performSearch();
+        }
+
+        function renderPublicTabs() {
+            const container = document.getElementById("publicModuleTabs");
+            container.innerHTML = MODULES.map(m => {
+                const count = (dataset[m.id] || []).length;
+                const isActive = m.id === activePublicTab;
+                return `
+                    <button onclick="changePublicTab('${m.id}')" class="whitespace-nowrap py-2.5 px-4 text-xs font-semibold rounded-t-lg transition flex items-center space-x-2 border-b-2 ${
+                        isActive 
+                        ? 'border-indigo-600 bg-white text-indigo-700 shadow-sm' 
+                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                    }">
+                        <span>${m.name}</span>
+                        <span class="px-1.5 py-0.5 rounded-full text-[10px] ${isActive ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-600'}">${count}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function changePublicTab(tabId) {
+            activePublicTab = tabId;
+            renderPublicTabs();
+            performSearch();
+        }
+
+        function performSearch() {
+            const dept = document.getElementById("filterDept").value.toLowerCase();
+            const muni = document.getElementById("filterMuni").value.toLowerCase();
+            const kw = document.getElementById("filterKeyword").value.toLowerCase();
+
+            // Calculate total global records badge
+            let grandTotal = 0;
+            MODULES.forEach(m => grandTotal += (dataset[m.id] || []).length);
+            document.getElementById("totalRecordsBadge").innerText = `${grandTotal} Registros Totales`;
+
+            // Filter active tab content
+            const records = dataset[activePublicTab] || [];
+            const filtered = records.filter(r => {
+                const matchDept = !dept || (r.departamento && r.departamento.toLowerCase().includes(dept));
+                const matchMuni = !muni || (r.municipio && r.municipio.toLowerCase().includes(muni));
+                
+                let matchKw = true;
+                if (kw) {
+                    matchKw = Object.values(r).some(val => 
+                        String(val).toLowerCase().includes(kw)
+                    );
+                }
+                return matchDept && matchMuni && matchKw;
+            });
+
+            // Update UI Header details
+            const titleEl = document.getElementById("selectedMuniTitle");
+            const summaryEl = document.getElementById("searchSummary");
+            const muniBadge = document.getElementById("muniBadge");
+
+            if (muni) {
+                const muniName = document.getElementById("filterMuni").value;
+                titleEl.innerText = `Caracterización Tributaria ICA: ${muniName}`;
+                summaryEl.innerText = `Mostrando especificaciones del módulo '${MODULES.find(m => m.id === activePublicTab).name}'`;
+                muniBadge.classList.remove("hidden");
+            } else {
+                titleEl.innerText = `Consulta General de Módulos ICA`;
+                summaryEl.innerText = `Viendo resultados para: ${MODULES.find(m => m.id === activePublicTab).name}`;
+                muniBadge.classList.add("hidden");
+            }
+
+            renderPublicCards(filtered);
+        }
+
+        function renderPublicCards(records) {
+            const container = document.getElementById("publicModuleContent");
+            if (records.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-slate-400">
+                        <i data-lucide="folder-search" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                        <p class="font-medium text-sm">No se encontraron registros para los filtros seleccionados.</p>
+                        <p class="text-xs">Prueba seleccionando otro departamento o limpiando los términos de búsqueda.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            // Render structured grid cards
+            let html = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">`;
+            records.forEach(r => {
+                html += `
+                    <div class="bg-white border border-slate-200 hover:border-indigo-300 rounded-xl p-4 shadow-sm hover:shadow transition">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+                            <span class="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                                ${r.municipio || 'Nacional'} ${r.departamento ? `(${r.departamento})` : ''}
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-mono">ID #${r.id || 1}</span>
+                        </div>
+                        <div class="space-y-2 text-xs">
+                `;
+
+                Object.keys(r).forEach(k => {
+                    if (['id', 'departamento', 'municipio'].includes(k)) return;
+                    const formattedKey = k.replace(/_/g, ' ').toUpperCase();
+                    html += `
+                        <div>
+                            <span class="font-semibold text-slate-500 text-[10px] uppercase block">${formattedKey}</span>
+                            <span class="text-slate-800 font-medium leading-relaxed">${r[k]}</span>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // ADMIN DASHBOARD LOGIC
+        // ==========================================
+        function renderAdminSidebar() {
+            const container = document.getElementById("adminModuleList");
+            container.innerHTML = MODULES.map(m => {
+                const count = (dataset[m.id] || []).length;
+                const isActive = m.id === activeAdminModule;
+                return `
+                    <button onclick="changeAdminModule('${m.id}')" class="w-full text-left p-2.5 rounded-xl text-xs font-medium flex items-center justify-between transition ${
+                        isActive 
+                        ? 'bg-indigo-600 text-white font-semibold shadow-sm' 
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }">
+                        <span class="truncate pr-2">${m.name}</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] ${isActive ? 'bg-indigo-800 text-white' : 'bg-slate-200 text-slate-600'}">${count}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function changeAdminModule(modId) {
+            activeAdminModule = modId;
+            renderAdminSidebar();
+            renderAdminWorkspace();
+        }
+
+        function renderAdminWorkspace() {
+            const modInfo = MODULES.find(m => m.id === activeAdminModule);
+            document.getElementById("adminCurrentModuleId").innerText = modInfo.id.toUpperCase();
+            document.getElementById("adminCurrentModuleName").innerText = modInfo.name;
+            document.getElementById("adminCurrentModuleDesc").innerText = modInfo.desc;
+
+            renderAdminTable();
+        }
+
+        function renderAdminTable() {
+            const records = dataset[activeAdminModule] || [];
+            const searchKw = document.getElementById("adminTableSearch").value.toLowerCase();
+            
+            const filtered = records.filter(r => 
+                Object.values(r).some(val => String(val).toLowerCase().includes(searchKw))
+            );
+
+            document.getElementById("adminRecordCount").innerText = filtered.length;
+
+            const headerRow = document.getElementById("adminTableHeader");
+            const bodyRow = document.getElementById("adminTableBody");
+
+            if (records.length === 0) {
+                headerRow.innerHTML = `<th class="p-3">Estado</th>`;
+                bodyRow.innerHTML = `<tr><td class="p-4 text-center text-slate-400">Sin datos cargados. Utiliza el módulo de arriba para cargar JSON/CSV.</td></tr>`;
+                return;
+            }
+
+            // Dynamic Header Columns
+            const keys = Object.keys(records[0]);
+            headerRow.innerHTML = keys.map(k => `<th class="p-3 font-semibold">${k.replace(/_/g, ' ')}</th>`).join('') + `<th class="p-3 text-right">Acciones</th>`;
+
+            // Dynamic Body Rows
+            bodyRow.innerHTML = filtered.map((r, idx) => {
+                return `
+                    <tr class="hover:bg-slate-50 transition">
+                        ${keys.map(k => `<td class="p-3 font-medium">${r[k] !== undefined ? r[k] : ''}</td>`).join('')}
+                        <td class="p-3 text-right">
+                            <button onclick="deleteRecord(${r.id || idx})" class="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50 transition">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function deleteRecord(id) {
+            dataset[activeAdminModule] = dataset[activeAdminModule].filter(r => r.id !== id);
+            renderAdminTable();
+            renderAdminSidebar();
+            renderPublicTabs();
+            showToast("Registro eliminado con éxito", "info");
+        }
+
+        // FILE IMPORT HANDLING (JSON & CSV)
+        function handleFileSelect(evt) {
+            const file = evt.target.files[0];
+            if (!file) return;
+
+            const filename = file.name.toLowerCase();
+            const reader = new FileReader();
+
+            if (filename.endsWith('.json')) {
+                reader.onload = function(e) {
+                    try {
+                        const json = JSON.parse(e.target.result);
+                        if (Array.isArray(json)) {
+                            dataset[activeAdminModule] = json;
+                        } else {
+                            dataset[activeAdminModule].push(json);
+                        }
+                        showToast(`Carga JSON exitosa (${dataset[activeAdminModule].length} registros totales)`, "success");
+                        renderAdminWorkspace();
+                        renderAdminSidebar();
+                        renderPublicTabs();
+                    } catch (err) {
+                        showToast("Error al procesar el archivo JSON: Estructura inválida", "error");
+                    }
+                };
+                reader.readAsText(file);
+            } else if (filename.endsWith('.csv')) {
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        if (results.data && results.data.length > 0) {
+                            dataset[activeAdminModule] = results.data;
+                            showToast(`Carga CSV exitosa (${results.data.length} registros)`, "success");
+                            renderAdminWorkspace();
+                            renderAdminSidebar();
+                            renderPublicTabs();
+                        } else {
+                            showToast("El archivo CSV no contiene registros válidos", "error");
+                        }
+                    },
+                    error: function(err) {
+                        showToast("Error al leer el archivo CSV", "error");
+                    }
+                });
+            } else {
+                showToast("Formato no soportado. Por favor suba .JSON o .CSV", "error");
+            }
+
+            evt.target.value = ''; // Reset input
+        }
+
+        // TEMPLATE DOWNLOADERS
+        function downloadSampleTemplate(type) {
+            const records = dataset[activeAdminModule] || [];
+            let content = "";
+            let filename = `plantilla_${activeAdminModule}.${type}`;
+            let mime = "";
+
+            if (type === 'json') {
+                content = JSON.stringify(records.length > 0 ? records : [{ departamento: "Santander", municipio: "Bucaramanga", ejemplo: "valor" }], null, 2);
+                mime = "application/json";
+            } else {
+                if (records.length > 0) {
+                    content = Papa.unparse(records);
+                } else {
+                    content = "departamento,municipio,ejemplo\nSantander,Bucaramanga,valor";
+                }
+                mime = "text/csv";
+            }
+
+            triggerDownload(content, filename, mime);
+        }
+
+        function exportCurrentModule(type) {
+            downloadSampleTemplate(type);
+            showToast(`Exportando datos de '${activeAdminModule}' en formato ${type.toUpperCase()}`, "info");
+        }
+
+        function triggerDownload(content, filename, mime) {
+            const blob = new Blob([content], { type: mime + ";charset=utf-8;" });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // MANUAL RECORD ENTRY
+        function openAddRecordModal() {
+            const modal = document.getElementById("addRecordModal");
+            const form = document.getElementById("addRecordForm");
+            const records = dataset[activeAdminModule] || [];
+            
+            let keys = ["departamento", "municipio"];
+            if (records.length > 0) {
+                keys = Object.keys(records[0]).filter(k => k !== 'id');
+            }
+
+            form.innerHTML = keys.map(k => `
+                <div>
+                    <label class="block font-semibold text-slate-600 uppercase text-[10px] mb-1">${k.replace(/_/g, ' ')}</label>
+                    <input type="text" name="${k}" required class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500">
+                </div>
+            `).join('') + `
+                <div class="pt-3">
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition">
+                        Guardar Registro
+                    </button>
+                </div>
+            `;
+
+            modal.classList.remove("hidden");
+        }
+
+        function closeAddRecordModal() {
+            document.getElementById("addRecordModal").classList.add("hidden");
+        }
+
+        function saveManualRecord(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const newObj = { id: Date.now() };
+
+            formData.forEach((val, key) => {
+                newObj[key] = val;
+            });
+
+            if (!dataset[activeAdminModule]) dataset[activeAdminModule] = [];
+            dataset[activeAdminModule].push(newObj);
+
+            showToast("Registro agregado manualmente", "success");
+            closeAddRecordModal();
+            renderAdminWorkspace();
+            renderAdminSidebar();
+            renderPublicTabs();
+        }
+
+        // TOAST SYSTEM
+        function showToast(msg, type = "info") {
+            const container = document.getElementById("toastContainer");
+            const toast = document.createElement("div");
+            
+            const bg = type === 'success' ? 'bg-emerald-800 text-white' : type === 'error' ? 'bg-rose-800 text-white' : 'bg-slate-800 text-white';
+            
+            toast.className = `${bg} px-4 py-3 rounded-xl shadow-xl text-xs font-medium flex items-center space-x-2 transition-all duration-300 pointer-events-auto transform translate-y-2 opacity-0`;
+            toast.innerHTML = `
+                <span>${msg}</span>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove("translate-y-2", "opacity-0"), 10);
+
+            setTimeout(() => {
+                toast.classList.add("opacity-0");
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
