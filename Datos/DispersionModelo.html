@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Análisis de Dispersión de PM10 - Modelo Gaussiano</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.3rem;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .input-panel h2, .results-panel h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin: 8px 4px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        .visualization-section {
+            margin-top: 20px;
+        }
+
+        .viz-tabs {
+            display: flex;
+            margin-bottom: 0;
+        }
+
+        .viz-tab {
+            background: #ecf0f1;
+            border: none;
+            padding: 12px 22px;
+            cursor: pointer;
+            border-radius: 10px 10px 0 0;
+            margin-right: 5px;
+            font-weight: 600;
+            font-size: 15px;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        .viz-tab.active {
+            background: #3498db;
+            color: white;
+        }
+
+        .viz-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 0 15px 15px 15px;
+            padding: 25px;
+            min-height: 520px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Grid de múltiples gráficas 2D */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .chart-box {
+            background: #ffffff;
+            border: 1px solid #e1e8ed;
+            border-radius: 12px;
+            padding: 15px;
+            height: 360px;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .chart-box.full-width {
+            grid-column: 1 / -1;
+            height: 380px;
+        }
+
+        #heatmap-wrapper {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #heatmap-canvas {
+            width: 100%;
+            max-width: 1100px;
+            height: 480px;
+            border-radius: 10px;
+            border: 1px solid #dcdde1;
+            background: #f8f9fa;
+        }
+
+        #three-container {
+            width: 100%;
+            height: 540px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #dcdde1;
+            position: relative;
+        }
+
+        .data-table {
+            overflow-x: auto;
+            margin-top: 20px;
+            max-height: 340px;
+            overflow-y: auto;
+        }
+
+        .data-table table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .data-table th, .data-table td {
+            padding: 10px 12px;
+            text-align: center;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .data-table th {
+            background: #3498db;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        .legend {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border-left: 4px solid #3498db;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .legend h4 {
+            margin-bottom: 6px;
+            color: #2c3e50;
+        }
+
+        .gradient-bar {
+            width: 240px;
+            height: 16px;
+            border-radius: 8px;
+            background: linear-gradient(90deg, #ff0000 0%, #ff8800 30%, #ffff00 55%, #00e676 80%, #00c853 100%);
+            border: 1px solid #bdc3c7;
+            margin-top: 4px;
+        }
+
+        .gradient-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #555;
+            width: 240px;
+        }
+
+        .formula {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.92rem;
+            border-left: 4px solid #3498db;
+        }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.95);
+            text-align: center;
+            padding: 18px 20px;
+            margin-top: 30px;
+            border-radius: 15px 15px 0 0;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+            color: #2c3e50;
+        }
+
+        .footer p {
+            margin: 4px 0;
+            font-size: 0.98rem;
+        }
+
+        .footer strong {
+            color: #2980b9;
+        }
+
+        @media (max-width: 900px) {
+            .main-content, .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .viz-tabs {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌪️ Sistema de Análisis de Dispersión de PM10</h1>
+            <p>Modelo Gaussiano Simplificado para Estimación de Contaminantes Atmosféricos</p>
+        </div>
+
+        <div class="main-content">
+            <div class="panel input-panel">
+                <h2>📊 Parámetros del Modelo</h2>
+                
+                <div class="form-group">
+                    <label for="emission-rate">Tasa de Emisión (Q) [g/s]:</label>
+                    <input type="number" id="emission-rate" value="10" step="0.1" min="0.1">
+                </div>
+
+                <div class="form-group">
+                    <label for="wind-speed">Velocidad del Viento (v) [m/s]:</label>
+                    <input type="number" id="wind-speed" value="3" step="0.1" min="0.1">
+                </div>
+
+                <div class="form-group">
+                    <label for="stack-height">Altura de Chimenea (H) [m]:</label>
+                    <input type="number" id="stack-height" value="45" step="1" min="1" max="300" onchange="updateThreeJS()">
+                </div>
+
+                <div class="form-group">
+                    <label for="stability-class">Clase de Estabilidad Atmosférica (Pasquill-Gifford):</label>
+                    <select id="stability-class">
+                        <option value="A">A - Muy Inestable</option>
+                        <option value="B">B - Inestable</option>
+                        <option value="C">C - Ligeramente Inestable</option>
+                        <option value="D" selected>D - Neutral</option>
+                        <option value="E">E - Ligeramente Estable</option>
+                        <option value="F">F - Estable</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="max-distance">Distancia Máxima de Análisis [km]:</label>
+                    <input type="number" id="max-distance" value="10" step="1" min="1" max="30">
+                </div>
+
+                <div>
+                    <button class="btn" onclick="calculateDispersion()">🔬 Calcular Dispersión</button>
+                    <button class="btn" onclick="saveToDatabase()">💾 Guardar en BD</button>
+                    <button class="btn" onclick="loadFromDatabase()">📂 Cargar de BD</button>
+                </div>
+
+                <div class="formula">
+                    <h4>Fórmula del Modelo Gaussiano:</h4>
+                    C(x,y,0) = (Q / (π·σy·σz·v)) · exp(-y²/(2σy²)) · exp(-H²/(2σz²))
+                    <br><br>
+                    Donde:<br>
+                    • C: Concentración a nivel del suelo [µg/m³]<br>
+                    • Q: Tasa de emisión [g/s] | v: Velocidad del viento [m/s]<br>
+                    • σy, σz: Desviaciones estándar lateral y vertical [m]<br>
+                    • H: Altura efectiva de la chimenea [m]
+                </div>
+            </div>
+
+            <div class="panel results-panel">
+                <h2>📈 Resultados del Análisis</h2>
+                <div id="results-summary">
+                    <p>Ingrese los parámetros y haga clic en "Calcular Dispersión" para ver los resultados.</p>
+                </div>
+                
+                <div class="data-table">
+                    <table id="results-table" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>Distancia (km)</th>
+                                <th>σy (m)</th>
+                                <th>σz (m)</th>
+                                <th>Concentración (µg/m³)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="visualization-section">
+            <div class="viz-tabs">
+                <button class="viz-tab active" onclick="showTab('chart', this)">📊 Gráficas Analíticas 2D</button>
+                <button class="viz-tab" onclick="showTab('heatmap', this)">🔥 Mapa de Calor de Pluma</button>
+                <button class="viz-tab" onclick="showTab('3d', this)">🌐 Visualización 3D</button>
+            </div>
+
+            <div class="viz-content">
+                <!-- PESTAÑA 1: MÚLTIPLES GRÁFICAS 2D -->
+                <div id="chart-content" class="tab-content">
+                    <div class="charts-grid">
+                        <div class="chart-box full-width">
+                            <canvas id="dispersion-chart"></canvas>
+                        </div>
+                        <div class="chart-box">
+                            <canvas id="sigma-chart"></canvas>
+                        </div>
+                        <div class="chart-box">
+                            <canvas id="crosswind-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 2: MAPA DE CALOR CORREGIDO -->
+                <div id="heatmap-content" class="tab-content" style="display: none;">
+                    <div id="heatmap-wrapper">
+                        <canvas id="heatmap-canvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- PESTAÑA 3: VISUALIZACIÓN 3D MEJORADA -->
+                <div id="3d-content" class="tab-content" style="display: none;">
+                    <div id="three-container"></div>
+                    <div class="legend">
+                        <div>
+                            <h4>Controles de Visualización 3D:</h4>
+                            <p>• <strong>Clic izquierdo + arrastrar:</strong> Rotar cámara | <strong>Rueda:</strong> Zoom | <strong>Clic derecho:</strong> Desplazar</p>
+                            <p>• <strong>Anillos de referencia:</strong> Marcados exactamente cada <strong>1 km</strong> hasta la distancia máxima configurada.</p>
+                        </div>
+                        <div>
+                            <h4>Degradado de Proximidad a la Fuente:</h4>
+                            <div class="gradient-bar"></div>
+                            <div class="gradient-labels">
+                                <span>Fuente (0 km)</span>
+                                <span>Zona Media</span>
+                                <span>Distancia Máx.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Simulación desarrollada por: <strong>Ing. Jeison Mauricio Delgado González</strong></p>
+        <p>Basado en el estudio de Pisco, Ica - Panamericana Sur</p>
+    </footer>
+
+    <script>
+        // Variables globales
+        let db = null;
+        let chart = null;
+        let sigmaChart = null;
+        let crosswindChart = null;
+        let scene, camera, renderer;
+        let dispersionData = [];
+        let activeTab = 'chart';
+
+        // Coeficientes de dispersión Pasquill-Gifford
+        const stabilityData = {
+            'A': {
+                sigmay: {a: 213, c: 440.8, d: 1.941, f: 9.27, c2: 459.7, d2: 2.094, f2: -9.6},
+                sigmaz: {a: 213, c: 440.8, d: 1.941, f: 9.27, c2: 459.7, d2: 2.094, f2: -9.6}
+            },
+            'B': {
+                sigmay: {a: 156, c: 106.6, d: 1.149, f: 3.3, c2: 108.2, d2: 1.098, f2: 2.0},
+                sigmaz: {a: 156, c: 106.6, d: 1.149, f: 3.3, c2: 108.2, d2: 1.098, f2: 2.0}
+            },
+            'C': {
+                sigmay: {a: 104, c: 61.0, d: 0.911, f: 0, c2: 61.0, d2: 0.911, f2: 0},
+                sigmaz: {a: 104, c: 61.0, d: 0.911, f: 0, c2: 61.0, d2: 0.911, f2: 0}
+            },
+            'D': {
+                sigmay: {a: 68, c: 33.2, d: 0.725, f: -1.7, c2: 44.5, d2: 0.516, f2: -13.0},
+                sigmaz: {a: 68, c: 33.2, d: 0.725, f: -1.7, c2: 44.5, d2: 0.516, f2: -13.0}
+            },
+            'E': {
+                sigmay: {a: 50.5, c: 22.8, d: 0.678, f: -1.3, c2: 55.4, d2: 0.305, f2: -34.0},
+                sigmaz: {a: 50.5, c: 22.8, d: 0.678, f: -1.3, c2: 55.4, d2: 0.305, f2: -34.0}
+            },
+            'F': {
+                sigmay: {a: 34, c: 14.35, d: 0.740, f: -0.35, c2: 62.6, d2: 0.180, f2: -48.6},
+                sigmaz: {a: 34, c: 14.35, d: 0.740, f: -0.35, c2: 62.6, d2: 0.180, f2: -48.6}
+            }
+        };
+
+        // Inicialización
+        window.addEventListener('load', async () => {
+            await initializeDatabase();
+            setupCharts();
+            setupThreeJS();
+            loadSampleData();
+        });
+
+        // Inicializar base de datos SQLite en memoria
+        async function initializeDatabase() {
+            try {
+                const sqlPromise = initSqlJs({
+                    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+                });
+                const SQL = await sqlPromise;
+                db = new SQL.Database();
+                
+                db.run(`
+                    CREATE TABLE IF NOT EXISTS dispersion_calculations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        emission_rate REAL,
+                        wind_speed REAL,
+                        stack_height REAL,
+                        stability_class TEXT,
+                        max_distance REAL,
+                        results TEXT
+                    )
+                `);
+                
+                db.run(`
+                    CREATE TABLE IF NOT EXISTS monitoring_points (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        point_name TEXT,
+                        distance REAL,
+                        concentration REAL,
+                        calculation_id INTEGER,
+                        FOREIGN KEY(calculation_id) REFERENCES dispersion_calculations(id)
+                    )
+                `);
+            } catch (e) {
+                console.warn("SQL.js no pudo inicializarse:", e);
+            }
+        }
+
+        // Calcular desviaciones estándar
+        function calculateSigma(distanceKm, stability, type) {
+            const params = stabilityData[stability][type];
+            const x = distanceKm * 1000;
+            
+            if (x < 1000) {
+                return params.c * Math.pow(x / 1000, params.d) * Math.exp(params.f * x / 1000);
+            } else {
+                return params.c2 * Math.pow(x / 1000, params.d2) * Math.exp(params.f2 * x / 1000);
+            }
+        }
+
+        // Cálculo principal del modelo gaussiano
+        function calculateDispersion() {
+            const Q = parseFloat(document.getElementById('emission-rate').value) || 10;
+            const v = parseFloat(document.getElementById('wind-speed').value) || 3;
+            const H = parseFloat(document.getElementById('stack-height').value) || 45;
+            const stability = document.getElementById('stability-class').value;
+            const maxDistance = parseFloat(document.getElementById('max-distance').value) || 10;
+            
+            dispersionData = [];
+            const tbody = document.getElementById('results-tbody');
+            tbody.innerHTML = '';
+            
+            let maxConcentration = 0;
+            let maxConcDistance = 0;
+            
+            for (let x = 0.1; x <= maxDistance + 0.001; x += 0.1) {
+                const dist = parseFloat(x.toFixed(1));
+                const sigmay = calculateSigma(dist, stability, 'sigmay');
+                const sigmaz = calculateSigma(dist, stability, 'sigmaz');
+                
+                const concentration = (Q * 1000000) / (Math.PI * sigmay * sigmaz * v) * 
+                                    Math.exp(-(H * H) / (2 * sigmaz * sigmaz));
+                
+                if (concentration > maxConcentration) {
+                    maxConcentration = concentration;
+                    maxConcDistance = dist;
+                }
+                
+                dispersionData.push({
+                    distance: dist,
+                    sigmay: parseFloat(sigmay.toFixed(2)),
+                    sigmaz: parseFloat(sigmaz.toFixed(2)),
+                    concentration: parseFloat(concentration.toFixed(4))
+                });
+                
+                if (Math.round(dist * 10) % 5 === 0 || dist <= 1.0) {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${dist.toFixed(1)}</td>
+                        <td>${sigmay.toFixed(2)}</td>
+                        <td>${sigmaz.toFixed(2)}</td>
+                        <td style="font-weight:bold; color: ${concentration > 50 ? '#e74c3c' : concentration > 20 ? '#f39c12' : '#27ae60'}">${concentration.toFixed(4)}</td>
+                    `;
+                }
+            }
+            
+            document.getElementById('results-table').style.display = 'table';
+            
+            const summary = document.getElementById('results-summary');
+            summary.innerHTML = `
+                <div style="background: #ecf0f1; padding: 15px; border-radius: 10px;">
+                    <h3>📊 Resumen del Análisis</h3>
+                    <p><strong>Concentración máxima:</strong> ${maxConcentration.toFixed(4)} µg/m³</p>
+                    <p><strong>Distancia de máxima concentración:</strong> ${maxConcDistance.toFixed(1)} km</p>
+                    <p><strong>Altura efectiva de chimenea:</strong> ${H} m | <strong>Alcance:</strong> ${maxDistance} km</p>
+                    <p><strong>Estado normativo (ECA Perú - 50 µg/m³):</strong> 
+                        <span style="font-weight:bold; color: ${maxConcentration > 50 ? '#e74c3c' : '#27ae60'}">
+                            ${maxConcentration > 50 ? '⚠️ Excede el límite permisible' : '✅ Cumple normativa'}
+                        </span>
+                    </p>
+                </div>
+            `;
+            
+            updateAllCharts();
+            updateHeatmap();
+            updateThreeJS();
+        }
+
+        // Configurar las 3 gráficas 2D
+        function setupCharts() {
+            // 1. Gráfica Principal: Concentración vs Distancia + Límite ECA
+            const ctx1 = document.getElementById('dispersion-chart').getContext('2d');
+            chart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Concentración PM10 (µg/m³)',
+                            data: [],
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.18)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: 3
+                        },
+                        {
+                            label: 'Límite ECA Perú (50 µg/m³)',
+                            data: [],
+                            borderColor: '#e74c3c',
+                            borderWidth: 2,
+                            borderDash: [6, 6],
+                            fill: false,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Perfil Longitudinal: Concentración de PM10 en el Eje del Viento',
+                            font: { size: 15, weight: 'bold' }
+                        }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Distancia desde la Chimenea (km)', font: { weight: 'bold' } } },
+                        y: { title: { display: true, text: 'Concentración (µg/m³)', font: { weight: 'bold' } }, beginAtZero: true }
+                    }
+                }
+            });
+
+            // 2. Gráfica de Coeficientes de Dispersión (Sigma Y y Sigma Z)
+            const ctx2 = document.getElementById('sigma-chart').getContext('2d');
+            sigmaChart = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Dispersión Lateral σy (m)',
+                            data: [],
+                            borderColor: '#9b59b6',
+                            backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                            borderWidth: 2.5,
+                            tension: 0.3,
+                            pointRadius: 2
+                        },
+                        {
+                            label: 'Dispersión Vertical σz (m)',
+                            data: [],
+                            borderColor: '#16a085',
+                            backgroundColor: 'rgba(22, 160, 133, 0.1)',
+                            borderWidth: 2.5,
+                            borderDash: [4, 4],
+                            tension: 0.3,
+                            pointRadius: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Crecimiento de Coeficientes de Dispersión (σy, σz)',
+                            font: { size: 14, weight: 'bold' }
+                        }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Distancia (km)', font: { weight: 'bold' } } },
+                        y: { title: { display: true, text: 'Desviación Estándar (m)', font: { weight: 'bold' } }, beginAtZero: true }
+                    }
+                }
+            });
+
+            // 3. Gráfica de Perfil Transversal (Campana Gaussiana en punto máximo)
+            const ctx3 = document.getElementById('crosswind-chart').getContext('2d');
+            crosswindChart = new Chart(ctx3, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Distribución Transversal (µg/m³)',
+                        data: [],
+                        borderColor: '#e67e22',
+                        backgroundColor: 'rgba(230, 126, 34, 0.2)',
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Perfil Transversal (Eje Y) en Punto de Máxima Concentración',
+                            font: { size: 14, weight: 'bold' }
+                        }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Desplazamiento Lateral Y (m)', font: { weight: 'bold' } } },
+                        y: { title: { display: true, text: 'Concentración (µg/m³)', font: { weight: 'bold' } }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // Actualizar todas las gráficas 2D
+        function updateAllCharts() {
+            if (!dispersionData.length) return;
+            
+            const distances = dispersionData.map(d => d.distance);
+            const concentrations = dispersionData.map(d => d.concentration);
+            const ecaLine = dispersionData.map(() => 50);
+            
+            // Gráfica 1
+            if (chart) {
+                chart.data.labels = distances;
+                chart.data.datasets[0].data = concentrations;
+                chart.data.datasets[1].data = ecaLine;
+                chart.update();
+            }
+
+            // Gráfica 2 (Sigmas)
+            if (sigmaChart) {
+                sigmaChart.data.labels = distances;
+                sigmaChart.data.datasets[0].data = dispersionData.map(d => d.sigmay);
+                sigmaChart.data.datasets[1].data = dispersionData.map(d => d.sigmaz);
+                sigmaChart.update();
+            }
+
+            // Gráfica 3 (Perfil Transversal Gaussiano en el punto crítico)
+            if (crosswindChart) {
+                const maxPoint = dispersionData.reduce((prev, curr) => 
+                    curr.concentration > prev.concentration ? curr : prev
+                );
+                const maxLateral = Math.ceil(maxPoint.sigmay * 3.5);
+                const step = Math.max(10, Math.round(maxLateral / 20));
+                const yLabels = [];
+                const yValues = [];
+
+                for (let y = -maxLateral; y <= maxLateral; y += step) {
+                    yLabels.push(`${y} m`);
+                    const cLateral = maxPoint.concentration * Math.exp(-(y * y) / (2 * maxPoint.sigmay * maxPoint.sigmay));
+                    yValues.push(parseFloat(cLateral.toFixed(4)));
+                }
+
+                crosswindChart.options.plugins.title.text = `Perfil Transversal (Eje Y) a ${maxPoint.distance} km (Máx. Impacto)`;
+                crosswindChart.data.labels = yLabels;
+                crosswindChart.data.datasets[0].data = yValues;
+                crosswindChart.update();
+            }
+        }
+
+        // MAPA DE CALOR CORREGIDO (Renderizado continuo direccional de la pluma)
+        function updateHeatmap() {
+            const canvas = document.getElementById('heatmap-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Garantizar dimensiones válidas incluso si la pestaña estaba oculta
+            const containerWidth = canvas.parentElement.offsetWidth || 1000;
+            canvas.width = Math.max(containerWidth, 800);
+            canvas.height = 480;
+            
+            const width = canvas.width;
+            const height = canvas.height;
+            ctx.clearRect(0, 0, width, height);
+
+            // Fondo estilo mapa topográfico claro
+            ctx.fillStyle = '#f4f7f6';
+            ctx.fillRect(0, 0, width, height);
+
+            const Q = parseFloat(document.getElementById('emission-rate').value) || 10;
+            const v = parseFloat(document.getElementById('wind-speed').value) || 3;
+            const H = parseFloat(document.getElementById('stack-height').value) || 45;
+            const stability = document.getElementById('stability-class').value;
+            const maxDistance = parseFloat(document.getElementById('max-distance').value) || 10;
+
+            const marginLeft = 75;
+            const marginRight = 110;
+            const marginTop = 55;
+            const marginBottom = 55;
+            const plotWidth = width - marginLeft - marginRight;
+            const plotHeight = height - marginTop - marginBottom;
+            const centerY = marginTop + plotHeight / 2;
+
+            // Calcular concentración máxima para normalizar escala de color
+            const maxConc = dispersionData.length 
+                ? Math.max(...dispersionData.map(d => d.concentration)) 
+                : 50;
+
+            // Rango transversal en metros (proporcional a la dispersión máxima)
+            const maxSigmaY = calculateSigma(maxDistance, stability, 'sigmay');
+            const maxCrosswindMeters = Math.max(maxSigmaY * 3.2, 600);
+
+            // Dibujar celda por celda la pluma gaussiana 2D C(x, y, 0)
+            const stepX = 3;
+            const stepY = 3;
+
+            for (let px = 0; px < plotWidth; px += stepX) {
+                const distKm = (px / plotWidth) * maxDistance;
+                if (distKm < 0.05) continue;
+
+                const sigmay = calculateSigma(distKm, stability, 'sigmay');
+                const sigmaz = calculateSigma(distKm, stability, 'sigmaz');
+                const centerConc = (Q * 1000000) / (Math.PI * sigmay * sigmaz * v) * Math.exp(-(H * H) / (2 * sigmaz * sigmaz));
+
+                for (let py = 0; py < plotHeight; py += stepY) {
+                    const normY = (py - plotHeight / 2) / (plotHeight / 2); // -1 a 1
+                    const yMeters = normY * maxCrosswindMeters;
+
+                    const conc = centerConc * Math.exp(-(yMeters * yMeters) / (2 * sigmay * sigmay));
+                    const ratio = Math.min(1, conc / (maxConc || 1));
+
+                    if (ratio > 0.015) {
+                        // Paleta térmica: Verde -> Amarillo -> Naranja -> Rojo
+                        let r, g, b;
+                        if (ratio < 0.33) {
+                            const t = ratio / 0.33;
+                            r = Math.round(46 + t * (241 - 46));
+                            g = Math.round(204 + t * (196 - 204));
+                            b = Math.round(113 - t * 98);
+                        } else if (ratio < 0.66) {
+                            const t = (ratio - 0.33) / 0.33;
+                            r = Math.round(241 + t * (230 - 241));
+                            g = Math.round(196 - t * (196 - 126));
+                            b = Math.round(15 + t * 19);
+                        } else {
+                            const t = (ratio - 0.66) / 0.34;
+                            r = Math.round(230 + t * (231 - 230));
+                            g = Math.round(126 - t * 80);
+                            b = Math.round(34 + t * 26);
+                        }
+
+                        const alpha = Math.min(0.88, 0.25 + ratio * 0.75);
+                        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                        ctx.fillRect(marginLeft + px, marginTop + py, stepX, stepY);
+                    }
+                }
+            }
+
+            // Dibujar cuadrícula y ejes kilométricos
+            ctx.strokeStyle = 'rgba(44, 62, 80, 0.18)';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = '12px Segoe UI, Arial';
+            ctx.textAlign = 'center';
+
+            const stepKm = maxDistance <= 10 ? 1 : 2;
+            for (let km = 0; km <= maxDistance; km += stepKm) {
+                const xPos = marginLeft + (km / maxDistance) * plotWidth;
+                ctx.beginPath();
+                ctx.moveTo(xPos, marginTop);
+                ctx.lineTo(xPos, marginTop + plotHeight);
+                ctx.stroke();
+                ctx.fillText(`${km} km`, xPos, marginTop + plotHeight + 20);
+            }
+
+            // Línea central del viento
+            ctx.strokeStyle = 'rgba(44, 62, 80, 0.35)';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(marginLeft, centerY);
+            ctx.lineTo(marginLeft + plotWidth, centerY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Etiquetas eje Y (Desplazamiento lateral)
+            ctx.textAlign = 'right';
+            [-1, -0.5, 0, 0.5, 1].forEach(factor => {
+                const yPos = centerY + factor * (plotHeight / 2);
+                const meters = Math.round(-factor * maxCrosswindMeters);
+                ctx.fillText(`${meters} m`, marginLeft - 10, yPos + 4);
+            });
+
+            // Marco del área de gráfico
+            ctx.strokeStyle = '#34495e';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(marginLeft, marginTop, plotWidth, plotHeight);
+
+            // Representación de la Chimenea (Origen)
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(marginLeft, centerY, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Barra de leyenda de colores a la derecha
+            const barX = width - 75;
+            const barY = marginTop + 20;
+            const barW = 20;
+            const barH = plotHeight - 40;
+            const grad = ctx.createLinearGradient(0, barY + barH, 0, barY);
+            grad.addColorStop(0, '#2ecc71');
+            grad.addColorStop(0.35, '#f1c40f');
+            grad.addColorStop(0.7, '#e67e22');
+            grad.addColorStop(1, '#e74c3c');
+
+            ctx.fillStyle = grad;
+            ctx.fillRect(barX, barY, barW, barH);
+            ctx.strokeStyle = '#7f8c8d';
+            ctx.strokeRect(barX, barY, barW, barH);
+
+            ctx.fillStyle = '#2c3e50';
+            ctx.textAlign = 'left';
+            ctx.font = 'bold 11px Segoe UI, Arial';
+            ctx.fillText(`${maxConc.toFixed(1)}`, barX + 25, barY + 8);
+            ctx.fillText(`${(maxConc * 0.5).toFixed(1)}`, barX + 25, barY + barH / 2 + 4);
+            ctx.fillText(`0.0`, barX + 25, barY + barH);
+            ctx.fillText(`µg/m³`, barX, barY - 8);
+
+            // Títulos
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 16px Segoe UI, Arial';
+            ctx.fillText(`Mapa de Calor de Dispersión Horizontal PM10 (Alcance: ${maxDistance} km | Viento →)`, width / 2, 30);
+            ctx.font = 'bold 13px Segoe UI, Arial';
+            ctx.fillText('Distancia a Sotavento (km)', marginLeft + plotWidth / 2, height - 12);
+        }
+
+        // Configurar Three.js
+        function setupThreeJS() {
+            const container = document.getElementById('three-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xeaf4fc);
+            scene.fog = new THREE.FogExp2(0xeaf4fc, 0.0012);
+            
+            const w = container.offsetWidth || 900;
+            const h = container.offsetHeight || 540;
+            camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 3000);
+            camera.position.set(0, 85, 165);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(w, h);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+            
+            // Luces
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.85);
+            directionalLight.position.set(80, 150, 80);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            setupCameraControls();
+            animate();
+        }
+
+        // Controles de cámara interactivos (Rotar, Zoom, Desplazar)
+        function setupCameraControls() {
+            let isDragging = false;
+            let isPanning = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            const target = new THREE.Vector3(0, 10, 0);
+            
+            renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                if (e.button === 0) isDragging = true;
+                if (e.button === 2) isPanning = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+                isPanning = false;
+            });
+            
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                if (isDragging) {
+                    const offset = camera.position.clone().sub(target);
+                    const spherical = new THREE.Spherical().setFromVector3(offset);
+                    spherical.theta -= deltaX * 0.008;
+                    spherical.phi -= deltaY * 0.008;
+                    spherical.phi = Math.max(0.08, Math.min(Math.PI / 2 - 0.02, spherical.phi));
+                    
+                    offset.setFromSpherical(spherical);
+                    camera.position.copy(target).add(offset);
+                    camera.lookAt(target);
+                } else if (isPanning) {
+                    const panSpeed = 0.25;
+                    target.x -= deltaX * panSpeed;
+                    target.z -= deltaY * panSpeed;
+                    camera.position.x -= deltaX * panSpeed;
+                    camera.position.z -= deltaY * panSpeed;
+                    camera.lookAt(target);
+                }
+                
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const offset = camera.position.clone().sub(target);
+                const scale = e.deltaY > 0 ? 1.1 : 0.9;
+                offset.multiplyScalar(scale);
+                offset.clampLength(15, 1200);
+                camera.position.copy(target).add(offset);
+                camera.lookAt(target);
+            });
+        }
+
+        // VISUALIZACIÓN 3D MEJORADA
+        function updateThreeJS() {
+            if (!scene || !dispersionData.length) return;
+            
+            // Limpiar objetos anteriores (mallas, puntos, líneas) conservando luces
+            const objectsToRemove = [];
+            scene.traverse((child) => {
+                if (child.isMesh || child.isPoints || child.isLineSegments) {
+                    objectsToRemove.push(child);
+                }
+            });
+            
+            objectsToRemove.forEach(obj => {
+                scene.remove(obj);
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) {
+                    if (obj.material.map) obj.material.map.dispose();
+                    obj.material.dispose();
+                }
+            });
+
+            // Leer parámetros actuales del usuario
+            const stackHeight = parseFloat(document.getElementById('stack-height').value) || 45;
+            const maxDistanceKm = parseFloat(document.getElementById('max-distance').value) || 10;
+            
+            // Escala espacial: 1 km = 14 unidades en escena 3D
+            const kmScale = 14;
+            const maxRadiusUnits = maxDistanceKm * kmScale;
+            
+            // 1. PLANO VERDE PROPORCIONAL A LA DISTANCIA MÁXIMA INGRESADA
+            const groundSize = Math.max(280, maxRadiusUnits * 2.6);
+            const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x7ec876 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Cuadrícula sutil en el terreno cada 1 km
+            const gridDivisions = Math.round(groundSize / kmScale);
+            const gridHelper = new THREE.GridHelper(gridDivisions * kmScale, gridDivisions, 0x3b7a34, 0x5da854);
+            gridHelper.position.y = 0.05;
+            gridHelper.material.opacity = 0.35;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+            
+            // 2. CHIMENEA DINÁMICA SEGÚN ALTURA INGRESADA (H)
+            // Escala visual de altura para que sea claramente perceptible
+            const visualHeight = Math.max(8, stackHeight * 0.75);
+            const stackGeometry = new THREE.CylinderGeometry(1.4, 2.6, visualHeight, 24);
+            const stackMaterial = new THREE.MeshPhongMaterial({ color: 0x555b61 });
+            const stack = new THREE.Mesh(stackGeometry, stackMaterial);
+            stack.position.y = visualHeight / 2;
+            stack.castShadow = true;
+            scene.add(stack);
+
+            // Franja roja de señalización en la cima de la chimenea
+            const topBandGeo = new THREE.CylinderGeometry(1.45, 1.55, Math.min(3, visualHeight * 0.12), 24);
+            const topBandMat = new THREE.MeshPhongMaterial({ color: 0xe74c3c });
+            const topBand = new THREE.Mesh(topBandGeo, topBandMat);
+            topBand.position.y = visualHeight - Math.min(1.5, visualHeight * 0.06);
+            scene.add(topBand);
+            
+            // 3. NUBE DE PUNTOS CON DEGRADADO TORNASOLADO ROJO (FUENTE) -> VERDE (LEJOS)
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const colors = [];
+            const colorHelper = new THREE.Color();
+            
+            for (let i = 0; i < dispersionData.length; i++) {
+                const data = dispersionData[i];
+                if (data.distance > maxDistanceKm) continue;
+
+                const distanceUnits = data.distance * kmScale;
+                // Factor normalizado de distancia: 0 en la chimenea -> 1 en la distancia máxima
+                const distRatio = Math.min(1, Math.max(0, data.distance / maxDistanceKm));
+                
+                // Densidad y dispersión radial de partículas
+                const radialSpread = Math.max(2.5, data.sigmay / 14);
+                const verticalSpread = Math.max(1.5, data.sigmaz / 16);
+
+                for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 10) {
+                    for (let rStep = 0; rStep <= radialSpread; rStep += Math.max(1.2, radialSpread / 4)) {
+                        const jitter = (Math.sin(i * 12.9898 + angle * 78.233 + rStep) * 0.5 + 0.5) * 1.4;
+                        const r = rStep + jitter;
+
+                        const x = distanceUnits * Math.cos(angle) + r * Math.cos(angle + Math.PI / 2);
+                        const z = distanceUnits * Math.sin(angle) + r * Math.sin(angle + Math.PI / 2);
+                        
+                        // Altura de la pluma partiendo exactamente desde la boca de la chimenea
+                        const verticalOffset = Math.sin(angle * 3 + rStep) * verticalSpread * 0.45;
+                        const y = Math.max(0.6, visualHeight - (distanceUnits * 0.04) + verticalOffset);
+                        
+                        vertices.push(x, y, z);
+                        
+                        // Degradado tornasolado continuo de Rojo (H=0.0) a Verde (H=0.36)
+                        // Se añade un ligero matiz iridiscente según el ángulo y radio
+                        const iridescentShift = Math.sin(angle * 2 + rStep * 0.5) * 0.035;
+                        const hue = Math.max(0.0, Math.min(0.38, (distRatio * 0.36) + iridescentShift));
+                        const saturation = 0.92;
+                        const lightness = 0.50 + (1 - distRatio) * 0.06;
+
+                        colorHelper.setHSL(hue, saturation, lightness);
+                        colors.push(colorHelper.r, colorHelper.g, colorHelper.b);
+                    }
+                }
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: 1.35,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.78
+            });
+            
+            const points = new THREE.Points(geometry, material);
+            scene.add(points);
+            
+            // 4. ANILLOS CONCÉNTRICOS ACENTUADOS EXACTAMENTE CADA 1 KM HASTA DISTANCIA MÁXIMA
+            const totalRings = Math.floor(maxDistanceKm);
+            for (let km = 1; km <= totalRings; km++) {
+                const radius = km * kmScale;
+                const isMajor = (km % 5 === 0 || km === totalRings);
+                const thickness = isMajor ? 0.45 : 0.25;
+
+                const ringGeometry = new THREE.RingGeometry(radius - thickness, radius + thickness, 64);
+                const ringMaterial = new THREE.MeshBasicMaterial({ 
+                    color: isMajor ? 0x1e3799 : 0x2c3e50, 
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: isMajor ? 0.65 : 0.40
+                });
+                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.y = 0.12;
+                scene.add(ring);
+                
+                // Etiquetas de distancia cada 1 km
+                const canvas = document.createElement('canvas');
+                canvas.width = 160;
+                canvas.height = 64;
+                const context = canvas.getContext('2d');
+                context.fillStyle = isMajor ? 'rgba(30, 55, 153, 0.85)' : 'rgba(44, 62, 80, 0.75)';
+                context.fillRect(10, 10, 140, 44);
+                context.font = 'bold 24px Segoe UI, Arial';
+                context.fillStyle = '#ffffff';
+                context.textAlign = 'center';
+                context.fillText(`${km} km`, 80, 40);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const textGeometry = new THREE.PlaneGeometry(7.5, 3);
+                const textMaterial = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                textMesh.position.set(radius, 2.2, 0);
+                scene.add(textMesh);
+            }
+        }
+        
+        // Bucle de animación 3D
+        function animate() {
+            requestAnimationFrame(animate);
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+        
+        // Cargar datos iniciales de ejemplo (Estudio Pisco, Ica)
+        function loadSampleData() {
+            const sampleData = [
+                {distance: 0.6, sigmay: 41.67, sigmaz: 21.00, concentration: 4.1186},
+                {distance: 0.8, sigmay: 54.67, sigmaz: 26.67, concentration: 20.3955},
+                {distance: 1.0, sigmay: 68.00, sigmaz: 32.00, concentration: 39.1528},
+                {distance: 1.5, sigmay: 99.00, sigmaz: 41.00, concentration: 53.4708},
+                {distance: 1.7, sigmay: 111.40, sigmaz: 45.95, concentration: 57.0681},
+                {distance: 2.0, sigmay: 130.00, sigmaz: 50.00, concentration: 53.8249},
+                {distance: 2.5, sigmay: 158.75, sigmaz: 56.75, concentration: 48.3550},
+                {distance: 3.0, sigmay: 187.50, sigmaz: 63.50, concentration: 42.6434},
+                {distance: 3.5, sigmay: 216.25, sigmaz: 70.25, concentration: 37.3506},
+                {distance: 4.0, sigmay: 245.00, sigmaz: 77.00, concentration: 32.6879},
+                {distance: 4.5, sigmay: 270.83, sigmaz: 82.33, concentration: 29.1248},
+                {distance: 5.0, sigmay: 296.67, sigmaz: 90.50, concentration: 25.7439},
+                {distance: 7.0, sigmay: 400.00, sigmaz: 109.00, concentration: 17.3965},
+                {distance: 10.0, sigmay: 550.00, sigmaz: 136.00, concentration: 10.9163}
+            ];
+            
+            dispersionData = sampleData;
+            updateAllCharts();
+            updateHeatmap();
+            updateThreeJS();
+            
+            const tbody = document.getElementById('results-tbody');
+            tbody.innerHTML = '';
+            
+            sampleData.forEach(data => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${data.distance.toFixed(1)}</td>
+                    <td>${data.sigmay.toFixed(2)}</td>
+                    <td>${data.sigmaz.toFixed(2)}</td>
+                    <td style="font-weight:bold; color: ${data.concentration > 50 ? '#e74c3c' : data.concentration > 20 ? '#f39c12' : '#27ae60'}">${data.concentration.toFixed(4)}</td>
+                `;
+            });
+            
+            document.getElementById('results-table').style.display = 'table';
+            
+            const summary = document.getElementById('results-summary');
+            summary.innerHTML = `
+                <div style="background: #ecf0f1; padding: 15px; border-radius: 10px;">
+                    <h3>📊 Datos de Referencia - Pisco, Ica</h3>
+                    <p><strong>Concentración máxima:</strong> 57.07 µg/m³</p>
+                    <p><strong>Distancia de máxima concentración:</strong> 1.7 km</p>
+                    <p><strong>Clase de estabilidad:</strong> D (Neutral)</p>
+                    <p><strong>Estado normativo:</strong> 
+                        <span style="font-weight:bold; color: #e74c3c">
+                            ⚠️ Excede ECA Perú (50 µg/m³)
+                        </span>
+                    </p>
+                </div>
+            `;
+        }
+        
+        // Guardar en base de datos
+        function saveToDatabase() {
+            if (!db || !dispersionData.length) {
+                alert('No hay datos para guardar o la base de datos no está inicializada.');
+                return;
+            }
+            
+            const params = {
+                emission_rate: parseFloat(document.getElementById('emission-rate').value),
+                wind_speed: parseFloat(document.getElementById('wind-speed').value),
+                stack_height: parseFloat(document.getElementById('stack-height').value),
+                stability_class: document.getElementById('stability-class').value,
+                max_distance: parseFloat(document.getElementById('max-distance').value),
+                results: JSON.stringify(dispersionData)
+            };
+            
+            try {
+                const stmt = db.prepare(`
+                    INSERT INTO dispersion_calculations 
+                    (emission_rate, wind_speed, stack_height, stability_class, max_distance, results)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `);
+                
+                stmt.run([
+                    params.emission_rate,
+                    params.wind_speed,
+                    params.stack_height,
+                    params.stability_class,
+                    params.max_distance,
+                    params.results
+                ]);
+                
+                alert('✅ Simulación guardada exitosamente en la base de datos local.');
+            } catch (error) {
+                console.error('Error al guardar:', error);
+                alert('❌ Error al guardar los datos.');
+            }
+        }
+        
+        // Cargar de base de datos
+        function loadFromDatabase() {
+            if (!db) {
+                alert('Base de datos no inicializada.');
+                return;
+            }
+            
+            try {
+                const stmt = db.prepare(`
+                    SELECT * FROM dispersion_calculations 
+                    ORDER BY timestamp DESC LIMIT 10
+                `);
+                
+                const results = [];
+                while (stmt.step()) {
+                    results.push(stmt.getAsObject());
+                }
+                
+                if (results.length === 0) {
+                    alert('No hay simulaciones guardadas en la base de datos.');
+                    return;
+                }
+                
+                let options = 'Seleccione una simulación para cargar:\n\n';
+                results.forEach((result, index) => {
+                    options += `${index + 1}. ${result.timestamp} - Estabilidad: ${result.stability_class}, H: ${result.stack_height}m, Dist: ${result.max_distance}km\n`;
+                });
+                
+                const selection = prompt(options + '\nIngrese el número de la opción:');
+                const selectedIndex = parseInt(selection) - 1;
+                
+                if (selectedIndex >= 0 && selectedIndex < results.length) {
+                    const selectedResult = results[selectedIndex];
+                    
+                    document.getElementById('emission-rate').value = selectedResult.emission_rate;
+                    document.getElementById('wind-speed').value = selectedResult.wind_speed;
+                    document.getElementById('stack-height').value = selectedResult.stack_height;
+                    document.getElementById('stability-class').value = selectedResult.stability_class;
+                    document.getElementById('max-distance').value = selectedResult.max_distance;
+                    
+                    dispersionData = JSON.parse(selectedResult.results);
+                    updateAllCharts();
+                    updateHeatmap();
+                    updateThreeJS();
+                    
+                    const tbody = document.getElementById('results-tbody');
+                    tbody.innerHTML = '';
+                    
+                    dispersionData.forEach(data => {
+                        const row = tbody.insertRow();
+                        row.innerHTML = `
+                            <td>${data.distance}</td>
+                            <td>${data.sigmay.toFixed(2)}</td>
+                            <td>${data.sigmaz.toFixed(2)}</td>
+                            <td style="font-weight:bold; color: ${data.concentration > 50 ? '#e74c3c' : data.concentration > 20 ? '#f39c12' : '#27ae60'}">${data.concentration.toFixed(4)}</td>
+                        `;
+                    });
+                    
+                    document.getElementById('results-table').style.display = 'table';
+                    alert('✅ Simulación cargada exitosamente.');
+                }
+            } catch (error) {
+                console.error('Error al cargar:', error);
+                alert('❌ Error al cargar los datos.');
+            }
+        }
+        
+        // Cambiar entre pestañas de visualización
+        function showTab(tabName, btnElement) {
+            activeTab = tabName;
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            document.querySelectorAll('.viz-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.getElementById(`${tabName}-content`).style.display = 'block';
+            if (btnElement) {
+                btnElement.classList.add('active');
+            }
+            
+            if (tabName === 'chart') {
+                if (chart) chart.resize();
+                if (sigmaChart) sigmaChart.resize();
+                if (crosswindChart) crosswindChart.resize();
+            } else if (tabName === 'heatmap') {
+                requestAnimationFrame(() => updateHeatmap());
+            } else if (tabName === '3d' && renderer) {
+                requestAnimationFrame(() => {
+                    const container = document.getElementById('three-container');
+                    renderer.setSize(container.offsetWidth, container.offsetHeight);
+                    camera.aspect = container.offsetWidth / container.offsetHeight;
+                    camera.updateProjectionMatrix();
+                    updateThreeJS();
+                });
+            }
+        }
+        
+        // Manejar redimensionamiento de ventana
+        window.addEventListener('resize', () => {
+            if (chart) chart.resize();
+            if (sigmaChart) sigmaChart.resize();
+            if (crosswindChart) crosswindChart.resize();
+            if (activeTab === 'heatmap') updateHeatmap();
+            
+            if (renderer && camera) {
+                const container = document.getElementById('three-container');
+                if (container.offsetWidth > 0) {
+                    renderer.setSize(container.offsetWidth, container.offsetHeight);
+                    camera.aspect = container.offsetWidth / container.offsetHeight;
+                    camera.updateProjectionMatrix();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
